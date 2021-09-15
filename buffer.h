@@ -2,13 +2,21 @@
 
 #include "shader.h"
 
-struct Object {
+#include <vector>
+
+struct Mesh {
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+};
+
+struct Buffer {
     unsigned int VAO;
     unsigned int VBO;
     unsigned int EBO;
     Shader shader;
+    Mesh mesh;
 };
 
-void draw(const Object &object);
+void draw(const Buffer &object);
 
-Object make_object();
+Buffer make_object();

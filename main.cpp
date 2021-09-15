@@ -3,10 +3,9 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include "shader.h"
 #include "buffer.h"
 
-Object object;
+Buffer object;
 
 void display() {
     glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -17,6 +16,7 @@ void display() {
 
 void init() {
     object = make_object();
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
