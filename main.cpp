@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include <GL/glew.h>
-#include <GL/freeglut.h>
+#include <GLFW/glfw3.h>
 
 GLfloat vertices[6] = {-1.0, -1.0, 0, 1, 1, -1};
 GLuint program;
@@ -16,8 +16,6 @@ void display() {
     glVertexAttribPointer(attribute_coord2d, 2, GL_FLOAT, GL_FALSE, 0, vertices);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glDisableVertexAttribArray(attribute_coord2d);
-
-    glutSwapBuffers();
 }
 
 GLuint compile_shader(const char *source, GLenum shader_type) {
@@ -77,21 +75,26 @@ void init() {
 }
 
 int main(int argc, char **argv) {
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    GLFWwindow *window;
 
+    glfwInit();
 
-    glutInitWindowPosition(100, 100);
-    glutInitWindowSize(640, 480);
-    glutCreateWindow("Test");
-
-    glutDisplayFunc(display);
+    window = glfwCreateWindow(640, 480, "Game", NULL, NULL);
+    glfwMakeContextCurrent(window);
 
     glewInit();
-
     init();
 
-    glutMainLoop();
+    while (!glfwWindowShouldClose(window))
+    {
+        display();
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glfwTerminate();
+
 
     return 0;
 }
