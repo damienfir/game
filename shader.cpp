@@ -3,11 +3,20 @@
 #include <GL/glew.h>
 #include <string>
 #include <stdexcept>
+#include <fstream>
 
+std::string read_from_file(const std::filesystem::path &path) {
+    std::ifstream file(path.string());
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
 
-Shader compile(const char *vertex_source, const char *fragment_source) {
+Shader compile(const std::filesystem::path &vertex, const std::filesystem::path &fragment) {
+    std::string vertex_source = read_from_file(vertex.string());
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+    auto source = vertex_source.c_str();
+    glShaderSource(vertex_shader, 1, &source, NULL);
     glCompileShader(vertex_shader);
     GLint ok;
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &ok);
@@ -18,8 +27,10 @@ Shader compile(const char *vertex_source, const char *fragment_source) {
         throw std::runtime_error(std::string("Vertex shader: ") + log);
     }
 
+    std::string fragment_source = read_from_file(fragment.string());
+    source = fragment_source.c_str();
     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+    glShaderSource(fragment_shader, 1, &source, NULL);
     glCompileShader(fragment_shader);
     glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &ok);
     if (!ok) {

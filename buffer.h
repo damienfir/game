@@ -1,12 +1,18 @@
 #pragma once
 
+#include <GL/glew.h>
 #include "shader.h"
+#include "math.h"
 
-#include <vector>
+struct Camera {
+    Matrix view;
+    Matrix projection;
+};
 
 struct Mesh {
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
+    GLenum mode = GL_TRIANGLES;
 };
 
 struct Buffer {
@@ -15,8 +21,12 @@ struct Buffer {
     unsigned int EBO;
     Shader shader;
     Mesh mesh;
+    Matrix transform;
 };
 
-void draw(const Buffer &object);
+void draw(const Buffer &object, const Camera& camera);
 
-Buffer make_object();
+Buffer make_object(const Mesh& mesh);
+
+Mesh grid_mesh(int rows, int cols);
+Mesh axis(int ax);

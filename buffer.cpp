@@ -1,14 +1,25 @@
 #include "buffer.h"
 
 #include <GL/glew.h>
+#include "logging.h"
 
-void draw(const Buffer &object) {
+
+void draw(const Buffer &object, const Camera &camera) {
     use(object.shader);
     glBindVertexArray(object.VAO);
-    glDrawElements(GL_TRIANGLES, object.mesh.indices.size(), GL_UNSIGNED_INT, 0);
+
+    int model_loc = glGetUniformLocation(object.shader.program, "model");
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, object.transform.ptr());
+
+    int view_loc = glGetUniformLocation(object.shader.program, "view");
+    glUniformMatrix4fv(view_loc, 1, GL_FALSE, camera.view.ptr());
+
+    int projection_loc = glGetUniformLocation(object.shader.program, "projection");
+    glUniformMatrix4fv(projection_loc, 1, GL_FALSE, camera.projection.ptr());
+
+    glDrawElements(object.mesh.mode, object.mesh.indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
-
 
 Mesh grid_mesh(int rows, int cols) {
     auto linear = [&](int r, int c) {
@@ -20,9 +31,9 @@ Mesh grid_mesh(int rows, int cols) {
     mesh.indices.reserve((rows - 1) * (cols - 1) * 6);
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            mesh.vertices.push_back(j * 0.1); // x
-            mesh.vertices.push_back(i * 0.1); // y
-            mesh.vertices.push_back(0); // z
+            mesh.vertices.push_back(j); // x
+            mesh.vertices.push_back(i); // y
+            mesh.vertices.push_back(-1); // z
 
             if (i < rows - 1 && j < cols - 1) {
                 mesh.indices.push_back(linear(i, j));
@@ -38,24 +49,27 @@ Mesh grid_mesh(int rows, int cols) {
     return mesh;
 }
 
-Buffer make_object() {
-    const char *vs =
-            "#version 330 core\n"
-            "layout (location = 0) in vec3 coord3d;                  "
-            "void main(void) {                        "
-            "  gl_Position = vec4(coord3d, 1.0); "
-            "}";
+Mesh axis(int ax) {
+    int size = 100;
+    int n = size * 2 + 1;
+    Mesh mesh;
+    mesh.vertices.reserve(n * 3);
+    mesh.indices.reserve(n);
+    mesh.mode = GL_POINTS;
+    for (int i = 0; i < n; ++i) {
+        mesh.vertices.push_back(ax == 0 ? i - size : 0);
+        mesh.vertices.push_back(ax == 1 ? i - size : 0);
+        mesh.vertices.push_back(ax == 2 ? i - size : 0);
+        mesh.indices.push_back(ax * n + i);
+    }
+    return mesh;
+}
 
-    const char *fs =
-            "#version 330\n"
-            "out vec4 FragColor;"
-            "void main(void) {        "
-            "  FragColor = vec4(0.0, 0.0, 1.0, 1.0); "
-            "}";
-
+Buffer make_object(const Mesh& mesh) {
     Buffer obj{};
-    obj.shader = compile(vs, fs);
-    obj.mesh = grid_mesh(10, 10);
+    obj.shader = compile("vertex.glsl", "fragment.glsl");
+    obj.mesh = mesh;
+    obj.transform = eye();
 
     glGenVertexArrays(1, &obj.VAO);
     glGenBuffers(1, &obj.VBO);
