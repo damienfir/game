@@ -3,11 +3,8 @@
 #include <GL/glew.h>
 #include "shader.h"
 #include "math.h"
+#include "camera.h"
 
-struct Camera {
-    Matrix view;
-    Matrix projection;
-};
 
 struct Mesh {
     std::vector<float> vertices;
@@ -24,9 +21,10 @@ struct Buffer {
     Matrix transform;
 };
 
-void draw(const Buffer &object, const Camera& camera);
+void draw(const Buffer &object, const Camera &camera);
 
-Buffer make_object(const Mesh& mesh);
+Buffer make_object(const Mesh &mesh);
 
 Mesh grid_mesh(int rows, int cols);
+
 Mesh axis(int ax);

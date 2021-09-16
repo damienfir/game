@@ -45,6 +45,10 @@ struct Controls {
     bool move_right;
     bool move_forward;
     bool move_backwards;
+    bool move_up;
+    bool move_down;
+    float rotate_x;
+    float rotate_y;
 };
 
 Buffer object;
@@ -75,9 +79,6 @@ void display() {
 
 void init() {
     object = make_object(grid_mesh(10, 10));
-    camera.view = lookat({0, 0, 0}, {0, 0, -1}, {0, 1, 0});
-//    camera.projection = perspective(0.1, 100.0, 5, 5);
-    camera.projection = eye();
 
     axes.x_axis = make_object(axis(0));
     axes.y_axis = make_object(axis(1));
@@ -89,18 +90,28 @@ void init() {
 
 void update(float dt) {
     if (controls.move_right) {
-        camera.view = translate(camera.view, {dt, 0, 0});
-        log(string(camera.view));
+        camera.move_horizontal(dt);
     } else if (controls.move_left) {
-        camera.view = translate(camera.view, {-dt, 0, 0});
-        log(string(camera.view));
+        camera.move_horizontal(-dt);
     }
+
     if (controls.move_backwards) {
-        camera.view = translate(camera.view, {0, 0, -dt});
-        log(string(camera.view));
+        camera.move_towards(-dt);
     } else if (controls.move_forward) {
-        camera.view = translate(camera.view, {0, 0, dt});
-        log(string(camera.view));
+        camera.move_towards(dt);
+    }
+
+    if (controls.move_up) {
+        camera.move_vertical(dt);
+    } else if (controls.move_down) {
+        camera.move_vertical(-dt);
+    }
+
+    if (controls.rotate_x != 0 || controls.rotate_y != 0) {
+        log(controls.rotate_x);
+        camera.rotate_direction(controls.rotate_x, controls.rotate_y);
+        controls.rotate_x = 0;
+        controls.rotate_y = 0;
     }
 }
 
@@ -144,10 +155,46 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             controls.move_backwards = false;
         }
     }
+
+
+    if (key == GLFW_KEY_E) {
+        if (action == GLFW_PRESS) {
+            controls.move_down = false;
+            controls.move_up = true;
+        } else if (action == GLFW_RELEASE) {
+            controls.move_up = false;
+        }
+    }
+
+    if (key == GLFW_KEY_Q) {
+        if (action == GLFW_PRESS) {
+            controls.move_up = false;
+            controls.move_down = true;
+        } else if (action == GLFW_RELEASE) {
+            controls.move_down = false;
+        }
+    }
 }
 
-static void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
-//    std::cout << xpos << ", " << ypos << std::endl;
+struct Mouse {
+    int x;
+    int y;
+    bool already_moved = false;
+};
+
+Mouse mouse;
+
+void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
+    if (!mouse.already_moved) {
+        mouse.already_moved = true;
+        mouse.x = xpos;
+        mouse.y = ypos;
+    }
+
+    controls.rotate_x = xpos - mouse.x;
+    controls.rotate_y = mouse.y - ypos; // reversed
+    mouse.x = xpos;
+    mouse.y = ypos;
 }
 
 int main(int argc, char **argv) {
@@ -158,9 +205,10 @@ int main(int argc, char **argv) {
     window = glfwCreateWindow(640, 480, "Game", NULL, NULL);
     glfwMakeContextCurrent(window);
 
-    // set raw mouse input for FPV control
     if (glfwRawMouseMotionSupported())
         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
@@ -171,6 +219,7 @@ int main(int argc, char **argv) {
     auto fps_counter = FPSCounter();
 
     while (!glfwWindowShouldClose(window)) {
+
         auto dt = timer.seconds_elapsed();
         update(dt);
         display();

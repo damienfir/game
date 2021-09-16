@@ -51,6 +51,14 @@ Matrix lookat(Vec3 position, Vec3 target, Vec3 up) {
     return rot * trans;
 }
 
+Matrix translation(const Vec3 &t) {
+    Matrix m = eye();
+    m(0, 3) = t.x;
+    m(1, 3) = t.y;
+    m(2, 3) = t.z;
+    return m;
+}
+
 Matrix operator*(const Matrix &A, const Matrix &B) {
     assert(A.cols() == B.rows());
 
@@ -82,6 +90,20 @@ Vec3 operator-(const Vec3 &p, const Vec3 &q) {
     return {p.x - q.x, p.y - q.y, p.z - q.z};
 }
 
+Vec3 operator+(const Vec3 &p, const Vec3 &q) {
+    return {p.x + q.x, p.y + q.y, p.z + q.z};
+}
+
+void operator+=(Vec3 &p, const Vec3 &q) {
+    p.x += q.x;
+    p.y += q.y;
+    p.z += q.z;
+}
+
+Vec3 operator*(const Vec3 &v, float a) {
+    return {v.x * a, v.y * a, v.z * a};
+}
+
 float norm(const Vec3 &v) {
     return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
@@ -108,4 +130,18 @@ Matrix translate(const Matrix &A, const Vec3 &t) {
     B(1, 3) += t.y;
     B(2, 3) += t.z;
     return B;
+}
+
+Matrix transpose(const Matrix &A) {
+    Matrix B;
+    for (int i = 0; i < A.rows(); ++i) {
+        for (int j = 0; j < A.cols(); ++j) {
+            B(j, i) = A.val(i, j);
+        }
+    }
+    return B;
+}
+
+float radians(float deg) {
+    return deg * (float) M_PI / 180.f;
 }

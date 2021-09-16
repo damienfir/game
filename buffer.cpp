@@ -9,13 +9,16 @@ void draw(const Buffer &object, const Camera &camera) {
     glBindVertexArray(object.VAO);
 
     int model_loc = glGetUniformLocation(object.shader.program, "model");
-    glUniformMatrix4fv(model_loc, 1, GL_FALSE, object.transform.ptr());
+    Matrix model_transposed = transpose(object.transform);
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, model_transposed.ptr());
 
     int view_loc = glGetUniformLocation(object.shader.program, "view");
-    glUniformMatrix4fv(view_loc, 1, GL_FALSE, camera.view.ptr());
+    Matrix view_tranposed = transpose(camera.view());
+    glUniformMatrix4fv(view_loc, 1, GL_FALSE, view_tranposed.ptr());
 
     int projection_loc = glGetUniformLocation(object.shader.program, "projection");
-    glUniformMatrix4fv(projection_loc, 1, GL_FALSE, camera.projection.ptr());
+    Matrix projection_transposed = transpose(camera.projection());
+    glUniformMatrix4fv(projection_loc, 1, GL_FALSE, projection_transposed.ptr());
 
     glDrawElements(object.mesh.mode, object.mesh.indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
@@ -55,17 +58,17 @@ Mesh axis(int ax) {
     Mesh mesh;
     mesh.vertices.reserve(n * 3);
     mesh.indices.reserve(n);
-    mesh.mode = GL_POINTS;
+    mesh.mode = GL_LINE_STRIP;
     for (int i = 0; i < n; ++i) {
         mesh.vertices.push_back(ax == 0 ? i - size : 0);
         mesh.vertices.push_back(ax == 1 ? i - size : 0);
         mesh.vertices.push_back(ax == 2 ? i - size : 0);
-        mesh.indices.push_back(ax * n + i);
+        mesh.indices.push_back(i);
     }
     return mesh;
 }
 
-Buffer make_object(const Mesh& mesh) {
+Buffer make_object(const Mesh &mesh) {
     Buffer obj{};
     obj.shader = compile("vertex.glsl", "fragment.glsl");
     obj.mesh = mesh;

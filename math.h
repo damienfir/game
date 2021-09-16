@@ -9,9 +9,15 @@ struct Vec3 {
     float z;
 };
 
+Vec3 operator+(const Vec3 &p, const Vec3 &q);
+
+void operator+=(Vec3 &p, const Vec3 &q);
+
 Vec3 operator-(const Vec3 &p, const Vec3 &q);
 
 Vec3 operator/(const Vec3 &v, float a);
+
+Vec3 operator*(const Vec3&v, float a);
 
 Vec3 normalize(const Vec3 &v);
 
@@ -57,3 +63,7 @@ Matrix lookat(Vec3 position, Vec3 target, Vec3 up);
 std::string string(const Matrix &m);
 
 std::string string(const Vec3 &v);
+
+Matrix transpose(const Matrix& A);
+
+float radians(float deg);
