@@ -25,6 +25,7 @@ float norm(const Vec3 &v);
 
 Vec3 cross(const Vec3 &a, const Vec3 &b);
 
+
 class Matrix {
 public:
     Matrix() {

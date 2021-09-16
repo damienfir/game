@@ -8,17 +8,10 @@ void draw(const Buffer &object, const Camera &camera) {
     use(object.shader);
     glBindVertexArray(object.VAO);
 
-    int model_loc = glGetUniformLocation(object.shader.program, "model");
-    Matrix model_transposed = transpose(object.transform);
-    glUniformMatrix4fv(model_loc, 1, GL_FALSE, model_transposed.ptr());
-
-    int view_loc = glGetUniformLocation(object.shader.program, "view");
-    Matrix view_tranposed = transpose(camera.view());
-    glUniformMatrix4fv(view_loc, 1, GL_FALSE, view_tranposed.ptr());
-
-    int projection_loc = glGetUniformLocation(object.shader.program, "projection");
-    Matrix projection_transposed = transpose(camera.projection());
-    glUniformMatrix4fv(projection_loc, 1, GL_FALSE, projection_transposed.ptr());
+    set_matrix4(object.shader, "model", object.transform);
+    set_matrix4(object.shader, "view", camera.view());
+    set_matrix4(object.shader, "projection", camera.projection());
+    set_vec3(object.shader, "color", object.mesh.color);
 
     glDrawElements(object.mesh.mode, object.mesh.indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
@@ -32,6 +25,7 @@ Mesh grid_mesh(int rows, int cols) {
     Mesh mesh;
     mesh.vertices.reserve(rows * cols * 3);
     mesh.indices.reserve((rows - 1) * (cols - 1) * 6);
+    mesh.color = {1, 1, 1};
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
             mesh.vertices.push_back(j); // x

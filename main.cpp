@@ -9,6 +9,10 @@
 
 class Timer {
 public:
+    Timer() {
+        reset();
+    }
+
     void reset() {
         m_timepoint = std::chrono::high_resolution_clock::now();
     }
@@ -16,8 +20,13 @@ public:
     float seconds_elapsed() {
         auto new_timepoint = std::chrono::high_resolution_clock::now();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(new_timepoint - m_timepoint).count();
-        reset();
         return ms / 1000.f;
+    }
+
+    float tick() {
+        auto s = seconds_elapsed();
+        reset();
+        return s;
     }
 
 private:
@@ -40,16 +49,81 @@ private:
     float m_last_dt;
 };
 
+template<typename T>
+class CircularBuffer {
+public:
+    explicit CircularBuffer(int n) : m_next(0) {
+        m_buffer.resize(n);
+    }
+
+    void add(T element) {
+        m_buffer[m_next++ % size()] = element;
+    }
+
+    T operator[](int i) const {
+        return m_buffer[i];
+    }
+
+    bool is_full() const {
+        return m_next >= size();
+    }
+
+    int size() const {
+        return m_buffer.size();
+    }
+
+private:
+    std::vector<T> m_buffer;
+    int m_next;
+};
+
+float average(const CircularBuffer<float> &buffer) {
+    int n = buffer.size();
+    float value = 0;
+    for (int i = 0; i < n; ++i) value += buffer[i] / (float) n;
+    return value;
+}
+
+class CameraRotation {
+public:
+    CameraRotation() : m_xs(CircularBuffer<float>(3)), m_ys(CircularBuffer<float>(3)), m_new(false) {}
+
+    void set(float x, float y) {
+        m_xs.add(x);
+        m_ys.add(y);
+        m_new = true;
+    }
+
+    float x() const {
+        if (!m_new) return 0;
+        if (!m_xs.is_full()) return 0;
+        return average(m_xs);
+    }
+
+    float y() const {
+        if (!m_new) return 0;
+        if (!m_ys.is_full()) return 0;
+        return average(m_ys);
+    }
+
+    void reset() {
+        m_new = false;
+    }
+
+private:
+    CircularBuffer<float> m_xs;
+    CircularBuffer<float> m_ys;
+    bool m_new;
+};
+
 struct Controls {
     bool move_left;
     bool move_right;
     bool move_forward;
     bool move_backwards;
-    bool move_up;
-    bool move_down;
-    float rotate_x;
-    float rotate_y;
+    CameraRotation rotation;
 };
+
 
 Buffer object;
 Camera camera;
@@ -62,10 +136,20 @@ struct Axes {
 };
 Axes axes;
 
-void draw(const Axes &axes, const Camera &camera) {
+void draw(Axes axes, const Camera &camera) {
     glPointSize(10);
+    axes.x_axis.mesh.mode = GL_POINTS;
     draw(axes.x_axis, camera);
+    axes.y_axis.mesh.mode = GL_POINTS;
     draw(axes.y_axis, camera);
+    axes.z_axis.mesh.mode = GL_POINTS;
+    draw(axes.z_axis, camera);
+
+    axes.x_axis.mesh.mode = GL_LINE_STRIP;
+    draw(axes.x_axis, camera);
+    axes.y_axis.mesh.mode = GL_LINE_STRIP;
+    draw(axes.y_axis, camera);
+    axes.z_axis.mesh.mode = GL_LINE_STRIP;
     draw(axes.z_axis, camera);
 }
 
@@ -81,10 +165,13 @@ void init() {
     object = make_object(grid_mesh(10, 10));
 
     axes.x_axis = make_object(axis(0));
+    axes.x_axis.mesh.color = {1, 0, 0};
     axes.y_axis = make_object(axis(1));
+    axes.y_axis.mesh.color = {0, 1, 0};
     axes.z_axis = make_object(axis(2));
+    axes.z_axis.mesh.color = {0, 0, 1};
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+//    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glEnable(GL_DEPTH_TEST);
 }
 
@@ -101,17 +188,9 @@ void update(float dt) {
         camera.move_towards(dt);
     }
 
-    if (controls.move_up) {
-        camera.move_vertical(dt);
-    } else if (controls.move_down) {
-        camera.move_vertical(-dt);
-    }
-
-    if (controls.rotate_x != 0 || controls.rotate_y != 0) {
-        log(controls.rotate_x);
-        camera.rotate_direction(controls.rotate_x, controls.rotate_y);
-        controls.rotate_x = 0;
-        controls.rotate_y = 0;
+    if (controls.rotation.y() != 0 || controls.rotation.y() != 0) {
+        camera.rotate_direction(controls.rotation.x(), controls.rotation.y());
+        controls.rotation.reset();
     }
 }
 
@@ -157,23 +236,6 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 
 
-    if (key == GLFW_KEY_E) {
-        if (action == GLFW_PRESS) {
-            controls.move_down = false;
-            controls.move_up = true;
-        } else if (action == GLFW_RELEASE) {
-            controls.move_up = false;
-        }
-    }
-
-    if (key == GLFW_KEY_Q) {
-        if (action == GLFW_PRESS) {
-            controls.move_up = false;
-            controls.move_down = true;
-        } else if (action == GLFW_RELEASE) {
-            controls.move_down = false;
-        }
-    }
 }
 
 struct Mouse {
@@ -183,16 +245,20 @@ struct Mouse {
 };
 
 Mouse mouse;
+Timer mouse_throttle;
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
+    log(mouse_throttle.seconds_elapsed());
+    if (mouse_throttle.seconds_elapsed() < 0.016) return;
+    mouse_throttle.tick();
+
     if (!mouse.already_moved) {
         mouse.already_moved = true;
         mouse.x = xpos;
         mouse.y = ypos;
     }
 
-    controls.rotate_x = xpos - mouse.x;
-    controls.rotate_y = mouse.y - ypos; // reversed
+    controls.rotation.set(xpos - mouse.x, mouse.y - ypos);
     mouse.x = xpos;
     mouse.y = ypos;
 }
@@ -201,8 +267,10 @@ int main(int argc, char **argv) {
     GLFWwindow *window;
 
     glfwInit();
+    float ratio = 16.f / 9.f;
+    int width = 1920;
 
-    window = glfwCreateWindow(640, 480, "Game", NULL, NULL);
+    window = glfwCreateWindow(width, width / ratio, "Game", NULL, NULL);
     glfwMakeContextCurrent(window);
 
     if (glfwRawMouseMotionSupported())
@@ -220,7 +288,7 @@ int main(int argc, char **argv) {
 
     while (!glfwWindowShouldClose(window)) {
 
-        auto dt = timer.seconds_elapsed();
+        auto dt = timer.tick();
         update(dt);
         display();
 

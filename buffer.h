@@ -10,6 +10,7 @@ struct Mesh {
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
     GLenum mode = GL_TRIANGLES;
+    Vec3 color;
 };
 
 struct Buffer {

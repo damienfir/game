@@ -12,24 +12,24 @@ Vec3 direction_from_euler(float yaw, float pitch) {
 }
 
 void Camera::move_horizontal(float t) {
-    m_position += normalize(cross(m_direction, m_up)) * t;
+    m_position += normalize(cross(m_direction, m_up)) * t * m_movement_speed;
     update_view_matrix();
 }
 
 void Camera::move_vertical(float t) {
-    m_position += m_up * t;
+    m_position += m_up * t * m_movement_speed;
     update_view_matrix();
 }
 
 void Camera::move_towards(float t) {
-    m_position += m_direction * t;
+    Vec3 horizontal_dir = {m_direction.x, 0, m_direction.z};
+    m_position += normalize(horizontal_dir) * t * m_movement_speed;
     update_view_matrix();
 }
 
 void Camera::rotate_direction(float dx, float dy) {
-    float sensitivity = 0.2;
-    m_pitch += dy * sensitivity;
-    m_yaw += dx * sensitivity;
+    m_pitch += dy * m_sensitivity;
+    m_yaw += dx * m_sensitivity;
 
     if (m_pitch > 89) {
         m_pitch = 89;

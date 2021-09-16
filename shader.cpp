@@ -1,4 +1,5 @@
 #include "shader.h"
+#include "math.h"
 
 #include <GL/glew.h>
 #include <string>
@@ -59,4 +60,15 @@ Shader compile(const std::filesystem::path &vertex, const std::filesystem::path 
 
 void use(const Shader &shader) {
     glUseProgram(shader.program);
+}
+
+void set_matrix4(const Shader &shader, const std::string& name, const Matrix& matrix) {
+    int loc = glGetUniformLocation(shader.program, name.c_str());
+    glUniformMatrix4fv(loc, 1, GL_TRUE, matrix.ptr());
+}
+
+void set_vec3(const Shader &shader, const std::string& name, const Vec3& vec) {
+    int loc = glGetUniformLocation(shader.program, name.c_str());
+    float v[] = {vec.x, vec.y, vec.z};
+    glUniform3fv(loc, 1, v);
 }
