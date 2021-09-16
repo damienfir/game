@@ -270,6 +270,7 @@ int main(int argc, char **argv) {
     float ratio = 16.f / 9.f;
     int width = 1920;
 
+    glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(width, width / ratio, "Game", NULL, NULL);
     glfwMakeContextCurrent(window);
 
