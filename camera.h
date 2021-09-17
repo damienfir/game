@@ -4,7 +4,7 @@
 
 class Camera {
 public:
-    Camera() : m_position({1, 1, 2}), m_up({0, 1, 0}), m_pitch(-15), m_yaw(-90), m_movement_speed(3),
+    Camera() : m_position({3, 3, 10}), m_up({0, 1, 0}), m_pitch(-15), m_yaw(-100), m_movement_speed(3),
                m_faster_factor(2),
                m_sensitivity(0.2) {
         m_projection = perspective(0.1, 100.0, 0.05, 0.05 * 0.5625);  // Use window size ratio

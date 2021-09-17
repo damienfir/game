@@ -129,33 +129,31 @@ struct Controls {
 };
 
 
-Buffer object;
-Camera camera;
-Controls controls;
-Buffer cube;
-
 struct Axes {
     Buffer x_axis;
     Buffer y_axis;
     Buffer z_axis;
 };
+
 Axes axes;
+Buffer object;
+Camera camera;
+Controls controls;
+
+Buffer cube;
 
 void draw(Axes axes, const Camera &camera) {
-    glPointSize(10);
-    axes.x_axis.mesh.mode = GL_POINTS;
     draw(axes.x_axis, camera);
-    axes.y_axis.mesh.mode = GL_POINTS;
     draw(axes.y_axis, camera);
-    axes.z_axis.mesh.mode = GL_POINTS;
     draw(axes.z_axis, camera);
+}
 
-    axes.x_axis.mesh.mode = GL_LINE_STRIP;
-    draw(axes.x_axis, camera);
-    axes.y_axis.mesh.mode = GL_LINE_STRIP;
-    draw(axes.y_axis, camera);
-    axes.z_axis.mesh.mode = GL_LINE_STRIP;
-    draw(axes.z_axis, camera);
+Axes make_axes() {
+    Axes a;
+    a.x_axis = make_axis(0);
+    a.y_axis = make_axis(1);
+    a.z_axis = make_axis(2);
+    return a;
 }
 
 void display() {
@@ -168,18 +166,10 @@ void display() {
 }
 
 void init() {
-    object = make_object(grid_mesh(10, 10));
-
-    axes.x_axis = make_object(make_axis(0));
-    axes.x_axis.mesh.color = {1, 0, 0};
-    axes.y_axis = make_object(make_axis(1));
-    axes.y_axis.mesh.color = {0, 1, 0};
-    axes.z_axis = make_object(make_axis(2));
-    axes.z_axis.mesh.color = {0, 0, 1};
-
-    cube = make_object(make_cube(3));
-    cube.mesh.color = {0.3, 0.2, 0.5};
-
+//    object = make_object(grid_mesh(10, 10), "shaders/phong_vs.glsl", "shaders/phong_fs.glsl");
+    cube = make_cube(3);
+//    cube.mesh.color = {0.3, 0.2, 0.5};
+    axes = make_axes();
     glEnable(GL_DEPTH_TEST);
 }
 
