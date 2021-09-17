@@ -11,8 +11,8 @@ out vec3 normal;
 out vec3 pos;
 
 void main(void) {
-  vec4 coord_model = model * vec4(coord, 1.0);
-  gl_Position = projection * view * coord_model;
-  pos = vec3(coord_model);
-  normal = mat3(transpose(inverse(model))) * normal_;
+    vec4 coord_model = model * vec4(coord, 1.0);
+    gl_Position = projection * view * coord_model;
+    pos = vec3(coord_model);
+    normal = mat3(transpose(inverse(model))) * normal_;
 }

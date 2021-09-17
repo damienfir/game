@@ -14,7 +14,16 @@
 //    bool has_normals;
 //};
 
+using Vertex = Vec3;
 
+struct VertexNormal {
+    Vec3 vertex;
+    Vec3 normal;
+};
+
+void log(const VertexNormal& vn);
+
+template<typename T>
 struct Buffer {
     enum ObjectType {
         Axis,
@@ -24,20 +33,19 @@ struct Buffer {
     unsigned int VAO;
     unsigned int VBO;
     Shader shader;
-    std::vector<float> vertices;
+    std::vector<T> elements;
     Vec3 color;
     Matrix transform;
     ObjectType type;
 };
 
-void draw(const Buffer &object, const Camera &camera);
+template<typename T>
+void draw(const Buffer<T> &object, const Camera &camera);
 
-//Buffer make_object(const Mesh &mesh, const std::string& vertex_shader, const std::string& fragment_shader);
+Buffer<VertexNormal> make_surface(int rows, int cols);
 
-//Mesh grid_mesh(int rows, int cols);
+Buffer<Vertex> make_axis(int ax);
 
-Buffer make_axis(int ax);
+Buffer<VertexNormal> make_rectangle(float width, float height, float depth);
 
-Buffer make_rectangle(float width, float height, float depth);
-
-Buffer make_cube(float size);
+Buffer<VertexNormal> make_cube(float size);

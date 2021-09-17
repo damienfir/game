@@ -1,13 +1,15 @@
 #pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
 struct Vec3 {
     float x;
     float y;
     float z;
 };
+
+void log(const Vec3 &v);
 
 Vec3 operator+(const Vec3 &p, const Vec3 &q);
 
@@ -17,7 +19,7 @@ Vec3 operator-(const Vec3 &p, const Vec3 &q);
 
 Vec3 operator/(const Vec3 &v, float a);
 
-Vec3 operator*(const Vec3&v, float a);
+Vec3 operator*(const Vec3 &v, float a);
 
 Vec3 normalize(const Vec3 &v);
 
@@ -25,24 +27,15 @@ float norm(const Vec3 &v);
 
 Vec3 cross(const Vec3 &a, const Vec3 &b);
 
-
 class Matrix {
-public:
-    Matrix() {
-        values.resize(16);
-    }
+  public:
+    Matrix() { values.resize(16); }
 
-    float val(int i, int j) const {
-        return values[i * cols() + j];
-    }
+    float val(int i, int j) const { return values[i * cols() + j]; }
 
-    float &operator()(int i, int j) {
-        return values[i * cols() + j];
-    }
+    float &operator()(int i, int j) { return values[i * cols() + j]; }
 
-    const float *ptr() const {
-        return values.data();
-    }
+    const float *ptr() const { return values.data(); }
 
     int rows() const { return 4; }
 
@@ -65,6 +58,10 @@ std::string string(const Matrix &m);
 
 std::string string(const Vec3 &v);
 
-Matrix transpose(const Matrix& A);
+Matrix transpose(const Matrix &A);
 
 float radians(float deg);
+
+Matrix scale(const Matrix &A, float factor);
+
+Matrix rotate_y(const Matrix& A, float deg);

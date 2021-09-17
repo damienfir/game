@@ -130,17 +130,16 @@ struct Controls {
 
 
 struct Axes {
-    Buffer x_axis;
-    Buffer y_axis;
-    Buffer z_axis;
+    Buffer<Vertex> x_axis;
+    Buffer<Vertex> y_axis;
+    Buffer<Vertex> z_axis;
 };
 
 Axes axes;
-Buffer object;
 Camera camera;
 Controls controls;
-
-Buffer cube;
+Buffer<VertexNormal> floor;
+Buffer<VertexNormal> cube;
 
 void draw(Axes axes, const Camera &camera) {
     draw(axes.x_axis, camera);
@@ -157,18 +156,17 @@ Axes make_axes() {
 }
 
 void display() {
-    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glClearColor(0.0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//    draw(object, camera);
+    draw(floor, camera);
     draw(axes, camera);
     draw(cube, camera);
 }
 
 void init() {
-//    object = make_object(grid_mesh(10, 10), "shaders/phong_vs.glsl", "shaders/phong_fs.glsl");
+    floor = make_surface(10, 10);
     cube = make_cube(3);
-//    cube.mesh.color = {0.3, 0.2, 0.5};
     axes = make_axes();
     glEnable(GL_DEPTH_TEST);
 }

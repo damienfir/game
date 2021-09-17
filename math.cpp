@@ -1,8 +1,8 @@
 #include "math.h"
 
-#include <cmath>
-#include <cassert>
 #include "logging.h"
+#include <cassert>
+#include <cmath>
 
 Matrix eye() {
     Matrix m;
@@ -86,13 +86,9 @@ std::string string(const Matrix &m) {
     return s;
 }
 
-Vec3 operator-(const Vec3 &p, const Vec3 &q) {
-    return {p.x - q.x, p.y - q.y, p.z - q.z};
-}
+Vec3 operator-(const Vec3 &p, const Vec3 &q) { return {p.x - q.x, p.y - q.y, p.z - q.z}; }
 
-Vec3 operator+(const Vec3 &p, const Vec3 &q) {
-    return {p.x + q.x, p.y + q.y, p.z + q.z};
-}
+Vec3 operator+(const Vec3 &p, const Vec3 &q) { return {p.x + q.x, p.y + q.y, p.z + q.z}; }
 
 void operator+=(Vec3 &p, const Vec3 &q) {
     p.x += q.x;
@@ -100,21 +96,13 @@ void operator+=(Vec3 &p, const Vec3 &q) {
     p.z += q.z;
 }
 
-Vec3 operator*(const Vec3 &v, float a) {
-    return {v.x * a, v.y * a, v.z * a};
-}
+Vec3 operator*(const Vec3 &v, float a) { return {v.x * a, v.y * a, v.z * a}; }
 
-float norm(const Vec3 &v) {
-    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-}
+float norm(const Vec3 &v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
 
-Vec3 normalize(const Vec3 &v) {
-    return v / norm(v);
-}
+Vec3 normalize(const Vec3 &v) { return v / norm(v); }
 
-Vec3 operator/(const Vec3 &v, float a) {
-    return {v.x / a, v.y / a, v.z / a};
-}
+Vec3 operator/(const Vec3 &v, float a) { return {v.x / a, v.y / a, v.z / a}; }
 
 Vec3 cross(const Vec3 &a, const Vec3 &b) {
     return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
@@ -142,6 +130,27 @@ Matrix transpose(const Matrix &A) {
     return B;
 }
 
-float radians(float deg) {
-    return deg * (float) M_PI / 180.f;
+float radians(float deg) { return deg * (float)M_PI / 180.f; }
+
+Matrix scale(const Matrix &A, float factor) {
+    Matrix B = A;
+    B(0, 0) *= factor;
+    B(1, 1) *= factor;
+    B(2, 2) *= factor;
+    return B;
 }
+
+Matrix rotation_y(float deg) {
+    Matrix R = eye();
+    R(0, 0) = std::cos(radians(deg));
+    R(0, 2) = -std::sin(radians(deg));
+    R(2, 0) = std::sin(radians(deg));
+    R(2, 2) = std::cos(radians(deg));
+    return R;
+}
+
+Matrix rotate_y(const Matrix &A, float deg) {
+    return rotation_y(deg) * A;
+}
+
+void log(const Vec3 &v) { std::cout << string(v) << std::endl; }

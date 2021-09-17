@@ -4,6 +4,7 @@ Graphics
   - materials
 
 Physics
+- walk on terrain
 - collision
   - simple wall collisions
 
