@@ -9,7 +9,6 @@ public:
                m_sensitivity(0.2) {
         m_projection = perspective(0.1, 100.0, 0.05, 0.05 * 0.5625);  // Use window size ratio
 
-//        m_projection = eye();
         update_direction();
         update_view_matrix();
     }
@@ -22,6 +21,10 @@ public:
 
     void rotate_direction(float dx, float dy);
 
+    Vec3 position() const {
+        return m_position;
+    }
+
     Matrix projection() const {
         return m_projection;
     }
@@ -29,11 +32,12 @@ public:
     Matrix view() const {
         return m_view;
     }
-private:
 
+private:
     void update_view_matrix();
 
     void update_direction();
+
     Vec3 m_position;
     Vec3 m_direction;
     Vec3 m_up;

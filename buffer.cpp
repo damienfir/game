@@ -32,6 +32,7 @@ void draw(const Buffer &object, const Camera &camera) {
         set_matrix4(object.shader, "view", camera.view());
         set_matrix4(object.shader, "projection", camera.projection());
         set_vec3(object.shader, "color", object.color);
+        set_vec3(object.shader, "viewer_pos", camera.position());
 
         glDrawArrays(GL_TRIANGLES, 0, object.vertices.size() / 6);
         glBindVertexArray(0);
@@ -149,30 +150,6 @@ Buffer make_rectangle(float width, float height, float depth) {
         buffer.vertices[i * 6 + 2] *= depth;
     }
 
-//    std::vector<Vec3> vertices;
-//    for (int i = 0; i < 2; ++i) {
-//        for (int j = 0; j < 2; ++j) {
-//            for (int k = 0; k < 2; ++k) {
-//                vertices.push_back({-width / 2 + i * width, -height / 2 + j * height, -depth / 2 + k * depth});
-//            }
-//        }
-//    }
-//
-//    std::vector<int> indices = {
-//            0, 2, 4, 2, 4, 6,  // front
-//            4, 5, 6, 6, 5, 7,  // right
-//            5, 1, 3, 3, 7, 5,  // back
-//            3, 2, 6, 6, 7, 3,  // top
-//            3, 1, 0, 0, 3, 2,  // left
-//            1, 5, 4, 1, 4, 0   // bottom
-//    };
-
-//    for (auto i: indices) {
-//        buffer.vertices.push_back(vertices[i].x);
-//        buffer.vertices.push_back(vertices[i].y);
-//        buffer.vertices.push_back(vertices[i].z);
-//    }
-
     buffer.color = {0.1, 0.4, 0.3};
     buffer.shader = compile("shaders/phong_vertex.glsl", "shaders/phong_fragment.glsl");
 
@@ -192,26 +169,3 @@ Buffer make_rectangle(float width, float height, float depth) {
 Buffer make_cube(float size) {
     return make_rectangle(size, size, size);
 }
-
-//Buffer make_object(const Mesh &mesh, const std::string &vertex_shader, const std::string &fragment_shader) {
-//    Buffer obj{};
-//    obj.shader = compile(vertex_shader, fragment_shader);
-//    obj.mesh = mesh;
-//    obj.transform = eye();
-//
-//    glGenVertexArrays(1, &obj.VAO);
-//    glGenBuffers(1, &obj.VBO);
-//    glGenBuffers(1, &obj.EBO);
-//
-//    glBindVertexArray(obj.VAO);
-//    glBindBuffer(GL_ARRAY_BUFFER, obj.VBO);
-//    glBufferData(GL_ARRAY_BUFFER, byte_size(obj.mesh.vertices), obj.mesh.vertices.data(), GL_STATIC_DRAW);
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj.EBO);
-//    glBufferData(GL_ELEMENT_ARRAY_BUFFER, byte_size(obj.mesh.indices), obj.mesh.indices.data(), GL_STATIC_DRAW);
-//    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *) 0);
-//    glEnableVertexAttribArray(0);
-//    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *) 3);
-//    glEnableVertexAttribArray(1);
-//
-//    return obj;
-//}
