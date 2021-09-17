@@ -28,4 +28,8 @@ Buffer make_object(const Mesh &mesh);
 
 Mesh grid_mesh(int rows, int cols);
 
-Mesh axis(int ax);
+Mesh make_axis(int ax);
+
+Mesh make_rectangle(float width, float height, float depth);
+
+Mesh make_cube(float size);

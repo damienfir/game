@@ -121,13 +121,18 @@ struct Controls {
     bool move_right;
     bool move_forward;
     bool move_backwards;
+    bool move_up;
+    bool move_down;
+    bool move_faster;
     CameraRotation rotation;
+    bool wireframe = false;
 };
 
 
 Buffer object;
 Camera camera;
 Controls controls;
+Buffer cube;
 
 struct Axes {
     Buffer x_axis;
@@ -157,35 +162,44 @@ void display() {
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    draw(object, camera);
+//    draw(object, camera);
     draw(axes, camera);
+    draw(cube, camera);
 }
 
 void init() {
     object = make_object(grid_mesh(10, 10));
 
-    axes.x_axis = make_object(axis(0));
+    axes.x_axis = make_object(make_axis(0));
     axes.x_axis.mesh.color = {1, 0, 0};
-    axes.y_axis = make_object(axis(1));
+    axes.y_axis = make_object(make_axis(1));
     axes.y_axis.mesh.color = {0, 1, 0};
-    axes.z_axis = make_object(axis(2));
+    axes.z_axis = make_object(make_axis(2));
     axes.z_axis.mesh.color = {0, 0, 1};
 
-//    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    cube = make_object(make_cube(3));
+    cube.mesh.color = {0.3, 0.2, 0.5};
+
     glEnable(GL_DEPTH_TEST);
 }
 
 void update(float dt) {
     if (controls.move_right) {
-        camera.move_horizontal(dt);
+        camera.move_horizontal(dt, controls.move_faster);
     } else if (controls.move_left) {
-        camera.move_horizontal(-dt);
+        camera.move_horizontal(-dt, controls.move_faster);
     }
 
     if (controls.move_backwards) {
-        camera.move_towards(-dt);
+        camera.move_towards(-dt, controls.move_faster);
     } else if (controls.move_forward) {
-        camera.move_towards(dt);
+        camera.move_towards(dt, controls.move_faster);
+    }
+
+    if (controls.move_up) {
+        camera.move_vertical(dt, controls.move_faster);
+    } else if (controls.move_down) {
+        camera.move_vertical(-dt, controls.move_faster);
     }
 
     if (controls.rotation.y() != 0 || controls.rotation.y() != 0) {
@@ -235,7 +249,40 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         }
     }
 
+    if (key == GLFW_KEY_E) {
+        if (action == GLFW_PRESS) {
+            controls.move_down = false;
+            controls.move_up = true;
+        } else if (action == GLFW_RELEASE) {
+            controls.move_up = false;
+        }
+    }
 
+    if (key == GLFW_KEY_Q) {
+        if (action == GLFW_PRESS) {
+            controls.move_up = false;
+            controls.move_down = true;
+        } else if (action == GLFW_RELEASE) {
+            controls.move_down = false;
+        }
+    }
+
+    if (key == GLFW_KEY_LEFT_SHIFT) {
+        if (action == GLFW_PRESS) {
+            controls.move_faster = true;
+        } else if (action == GLFW_RELEASE) {
+            controls.move_faster = false;
+        }
+    }
+
+    if (key == GLFW_KEY_BACKSLASH && action == GLFW_PRESS) {
+        controls.wireframe = !controls.wireframe;
+        if (controls.wireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        } else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+    }
 }
 
 struct Mouse {
@@ -248,7 +295,6 @@ Mouse mouse;
 Timer mouse_throttle;
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
-    log(mouse_throttle.seconds_elapsed());
     if (mouse_throttle.seconds_elapsed() < 0.016) return;
     mouse_throttle.tick();
 

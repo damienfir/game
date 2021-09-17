@@ -11,19 +11,19 @@ Vec3 direction_from_euler(float yaw, float pitch) {
     return normalize(dir);
 }
 
-void Camera::move_horizontal(float t) {
-    m_position += normalize(cross(m_direction, m_up)) * t * m_movement_speed;
+void Camera::move_horizontal(float t, bool faster) {
+    m_position += normalize(cross(m_direction, m_up)) * t * m_movement_speed * (faster ? m_faster_factor : 1);
     update_view_matrix();
 }
 
-void Camera::move_vertical(float t) {
-    m_position += m_up * t * m_movement_speed;
+void Camera::move_vertical(float t, bool faster) {
+    m_position += m_up * t * m_movement_speed * (faster ? m_faster_factor : 1);
     update_view_matrix();
 }
 
-void Camera::move_towards(float t) {
+void Camera::move_towards(float t, bool faster) {
     Vec3 horizontal_dir = {m_direction.x, 0, m_direction.z};
-    m_position += normalize(horizontal_dir) * t * m_movement_speed;
+    m_position += normalize(horizontal_dir) * t * m_movement_speed * (faster ? m_faster_factor : 1);
     update_view_matrix();
 }
 
@@ -45,7 +45,6 @@ void Camera::rotate_direction(float dx, float dy) {
 
 void Camera::update_direction() {
     m_direction = direction_from_euler(m_yaw, m_pitch);
-    log(string(m_direction));
 }
 
 void Camera::update_view_matrix() {

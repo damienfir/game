@@ -46,7 +46,7 @@ Mesh grid_mesh(int rows, int cols) {
     return mesh;
 }
 
-Mesh axis(int ax) {
+Mesh make_axis(int ax) {
     int size = 100;
     int n = size * 2 + 1;
     Mesh mesh;
@@ -60,6 +60,36 @@ Mesh axis(int ax) {
         mesh.indices.push_back(i);
     }
     return mesh;
+}
+
+Mesh make_rectangle(float width, float height, float depth) {
+    Mesh mesh;
+    mesh.vertices.reserve(8*3);
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            for (int k = 0; k < 2; ++k) {
+                mesh.vertices.push_back(-width/2 + i*width);
+                mesh.vertices.push_back(-height/2 + j*height);
+                mesh.vertices.push_back(-depth/2 + k*depth);
+            }
+        }
+    }
+
+    mesh.mode = GL_TRIANGLES;
+    mesh.indices = {
+            0, 2, 4, 2, 4, 6,  // front
+            4, 5, 6, 6, 5, 7,  // right
+            5, 1, 3, 3, 7, 5,  // back
+            3, 2, 6, 6, 7, 3,  // top
+            3, 1, 0, 0, 3, 2,  // left
+            1, 5, 4, 1, 4, 0   // bottom
+    };
+
+    return mesh;
+}
+
+Mesh make_cube(float size) {
+    return make_rectangle(size, size, size);
 }
 
 Buffer make_object(const Mesh &mesh) {
