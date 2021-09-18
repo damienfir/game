@@ -11,22 +11,22 @@ Vec3 direction_from_euler(float yaw, float pitch) {
   return normalize(dir);
 }
 
-void Camera::move_horizontal(float t, bool faster) {
-  m_position += normalize(cross(m_direction, m_up)) * t * m_movement_speed *
-                (faster ? m_faster_factor : 1);
-  update_view_matrix();
+void Camera::set_position(Vec3 position) {
+    m_position = position;
+    update_view_matrix();
 }
 
-void Camera::move_vertical(float t, bool faster) {
-  m_position += m_up * t * m_movement_speed * (faster ? m_faster_factor : 1);
-  update_view_matrix();
+Vec3 Camera::move_horizontal(float t) const {
+  return normalize(cross(m_direction, m_up)) * t * m_movement_speed;
 }
 
-void Camera::move_towards(float t, bool faster) {
+Vec3 Camera::move_vertical(float t) const{
+  return m_up * t * m_movement_speed;
+}
+
+Vec3 Camera::move_towards(float t) const {
   Vec3 horizontal_dir = {m_direction.x, 0, m_direction.z};
-  m_position += normalize(horizontal_dir) * t * m_movement_speed *
-                (faster ? m_faster_factor : 1);
-  update_view_matrix();
+  return normalize(horizontal_dir) * t * m_movement_speed;
 }
 
 void Camera::rotate_direction(float dx, float dy) {
@@ -48,8 +48,6 @@ void Camera::rotate_direction(float dx, float dy) {
 void Camera::update_direction() {
   m_direction = direction_from_euler(m_yaw, m_pitch);
 }
-
 void Camera::update_view_matrix() {
   m_view = lookat(m_position, m_position + m_direction, m_up);
 }
-

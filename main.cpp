@@ -57,18 +57,22 @@ struct CameraControls {
 
 struct RenderControls {
     bool wireframe = false;
+    bool draw_axes = true;
 };
 
 struct Axes {
-    Buffer x_axis;
-    Buffer y_axis;
-    Buffer z_axis;
+    Axis x_axis;
+    Axis y_axis;
+    Axis z_axis;
 };
 
+struct World {
+    std::vector<Rectangle> rectangles;
+};
+
+World world;
 Camera camera;
 Axes axes;
-Buffer floor;
-Buffer cube;
 CameraControls camera_controls;
 RenderControls render_controls;
 
@@ -90,40 +94,90 @@ void display() {
     glClearColor(0.0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    draw(floor, camera);
-    draw(axes, camera);
-    draw(cube, camera);
+    if (render_controls.draw_axes) {
+        draw(axes, camera);
+    }
+
+    for (const auto &buffer : world.rectangles) {
+        draw(buffer, camera);
+    }
+}
+
+bool intersect(const Rectangle& other, const Vec3& point) {
+    return false;
+}
+
+void update(Camera &camera, const CameraControls &controls, float dt) {
+    Vec3 velocity;
+
+    if (controls.move_right) {
+        velocity = camera.move_horizontal(dt);
+    } else if (controls.move_left) {
+        velocity = camera.move_horizontal(-dt);
+    }
+
+    if (controls.move_backwards) {
+        velocity += camera.move_towards(-dt);
+    } else if (controls.move_forward) {
+        velocity += camera.move_towards(dt);
+    }
+
+    if (controls.move_up) {
+        velocity += camera.move_vertical(dt);
+    } else if (controls.move_down) {
+        velocity += camera.move_vertical(-dt);
+    }
+
+    if (controls.move_faster)
+        velocity *= 2.f;
+
+    Vec3 new_position = camera.position() + velocity;
+
+    for (const auto &other : world.rectangles) {
+        if (intersect(other, new_position)) {
+            new_position = camera.position();
+            break;
+        }
+    }
+
+    camera.set_position(new_position);
+
+    if (controls.rotation_x != 0 || controls.rotation_y != 0) {
+        camera.rotate_direction(controls.rotation_x, controls.rotation_y);
+    }
+
+    //    Vec3 current_position = camera.position();
+    //    for (const Buffer& other : buffers) {
+    //        if (intersect(other, current_position)) {
+    //
+    //        }
+    //    }
 }
 
 void update(float dt) {
-    if (camera_controls.move_right) {
-        camera.move_horizontal(dt, camera_controls.move_faster);
-    } else if (camera_controls.move_left) {
-        camera.move_horizontal(-dt, camera_controls.move_faster);
-    }
-
-    if (camera_controls.move_backwards) {
-        camera.move_towards(-dt, camera_controls.move_faster);
-    } else if (camera_controls.move_forward) {
-        camera.move_towards(dt, camera_controls.move_faster);
-    }
-
-    if (camera_controls.move_up) {
-        camera.move_vertical(dt, camera_controls.move_faster);
-    } else if (camera_controls.move_down) {
-        camera.move_vertical(-dt, camera_controls.move_faster);
-    }
-
-    if (camera_controls.rotation_x != 0 || camera_controls.rotation_y != 0) {
-        camera.rotate_direction(camera_controls.rotation_x, camera_controls.rotation_y);
-        camera_controls.rotation_x = 0;
-        camera_controls.rotation_y = 0;
-    }
+    update(camera, camera_controls, dt);
+    camera_controls.rotation_x = 0;
+    camera_controls.rotation_y = 0;
 }
 
 void init() {
-    floor = make_surface(10, 10);
-    cube = make_cube(3);
+    //    buffers = {make_surface(10, 10)};
+
+    for (int i = 0; i < 100; ++i) {
+        float size = 5 * (rand() % 90) / 90.f;
+        Rectangle cube = make_cube(size);
+        float tx = (rand() % 300 - 150) / 10.f;
+        float ty = (rand() % 300 - 150) / 10.f;
+        float tz = -(rand() % 300) / 10.f;
+        cube.transform = translate(cube.transform, {tx, ty, tz});
+        float r = (rand() % 1000) / 1000.f;
+        float g = (rand() % 1000) / 1000.f;
+        float b = (rand() % 1000) / 1000.f;
+        cube.color = {r, g, b};
+
+        world.rectangles.push_back(cube);
+    }
+
     axes = make_axes();
     glEnable(GL_DEPTH_TEST);
 }
@@ -203,9 +257,11 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
     }
+
+    if (key == GLFW_KEY_X && action == GLFW_PRESS) {
+        render_controls.draw_axes = !render_controls.draw_axes;
+    }
 }
-
-
 
 struct Mouse {
     int x;
@@ -232,8 +288,6 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
     mouse.x = xpos;
     mouse.y = ypos;
 }
-
-
 
 int main(int argc, char **argv) {
     GLFWwindow *window;

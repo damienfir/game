@@ -98,6 +98,12 @@ void operator+=(Vec3 &p, const Vec3 &q) {
 
 Vec3 operator*(const Vec3 &v, float a) { return {v.x * a, v.y * a, v.z * a}; }
 
+void operator*=(Vec3 &p, float a) {
+    p.x *= a;
+    p.y *= a;
+    p.z *= a;
+}
+
 float norm(const Vec3 &v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
 
 Vec3 normalize(const Vec3 &v) { return v / norm(v); }

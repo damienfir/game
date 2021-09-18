@@ -4,9 +4,9 @@
 #include <vector>
 
 struct Vec3 {
-    float x;
-    float y;
-    float z;
+    float x{0};
+    float y{0};
+    float z{0};
 };
 
 void log(const Vec3 &v);
@@ -20,6 +20,8 @@ Vec3 operator-(const Vec3 &p, const Vec3 &q);
 Vec3 operator/(const Vec3 &v, float a);
 
 Vec3 operator*(const Vec3 &v, float a);
+
+void operator*=(Vec3 &p, float a);
 
 Vec3 normalize(const Vec3 &v);
 

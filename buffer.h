@@ -5,25 +5,35 @@
 #include "math.h"
 #include "camera.h"
 
+struct Axis {
+    unsigned int VAO;
+    unsigned int VBO;
+    Shader shader;
+    std::vector<Vec3> vertices;
+    Vec3 color;
+};
 
-struct Buffer {
+struct Rectangle {
+    float width;
+    float height;
+    float depth;
     unsigned int VAO;
     unsigned int VBO;
     Shader shader;
     std::vector<Vec3> vertices;
     std::vector<Vec3> normals;
-    bool has_normals = false;
-    bool is_axis = false;
     Vec3 color;
     Matrix transform;
 };
 
-void draw(const Buffer& buffer, const Camera &camera);
+void draw(const Axis &axis, const Camera &camera);
 
-Buffer make_surface(int rows, int cols);
+void draw(const Rectangle &cube, const Camera &camera);
 
-Buffer make_axis(int ax);
+//Buffer make_surface(int rows, int cols);
 
-Buffer make_rectangle(float width, float height, float depth);
+Axis make_axis(int ax);
 
-Buffer make_cube(float size);
+Rectangle make_rectangle(float width, float height, float depth);
+
+Rectangle make_cube(float size);

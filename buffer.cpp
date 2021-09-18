@@ -22,77 +22,97 @@ std::vector<float> pack_vertices_and_normals(const std::vector<Vec3> &vertices,
     return data;
 }
 
-void draw(const Buffer &buffer, const Camera &camera) {
-    if (buffer.is_axis) {
-        use(buffer.shader);
-        glBindVertexArray(buffer.VAO);
+void draw(const Axis &axis, const Camera &camera) {
+    use(axis.shader);
+    glBindVertexArray(axis.VAO);
 
-        set_matrix4(buffer.shader, "view", camera.view());
-        set_matrix4(buffer.shader, "projection", camera.projection());
-        set_vec3(buffer.shader, "color", buffer.color);
+    set_matrix4(axis.shader, "view", camera.view());
+    set_matrix4(axis.shader, "projection", camera.projection());
+    set_vec3(axis.shader, "color", axis.color);
 
-        glPointSize(10);
-        glDrawArrays(GL_POINTS, 0, buffer.vertices.size());
-        glDrawArrays(GL_LINE_STRIP, 0, buffer.vertices.size());
-        glBindVertexArray(0);
-
-    } else if (buffer.has_normals) {
-        use(buffer.shader);
-        glBindVertexArray(buffer.VAO);
-
-        set_matrix4(buffer.shader, "model", buffer.transform);
-        set_matrix4(buffer.shader, "view", camera.view());
-        set_matrix4(buffer.shader, "projection", camera.projection());
-        set_vec3(buffer.shader, "color", buffer.color);
-        set_vec3(buffer.shader, "viewer_pos", camera.position());
-
-        log("Drawing with normals: " + std::to_string(buffer.vertices.size()));
-        glDrawArrays(GL_TRIANGLES, 0, buffer.vertices.size());
-        glBindVertexArray(0);
-    }
+    glPointSize(10);
+    glDrawArrays(GL_POINTS, 0, axis.vertices.size());
+    glDrawArrays(GL_LINE_STRIP, 0, axis.vertices.size());
+    glBindVertexArray(0);
 }
 
-Buffer make_surface(int rows, int cols) {
-    Buffer buffer;
-    buffer.color = {0.2, 1, 0};
-    buffer.transform = scale(translate(eye(), {-5, 0, -5}), 10);
-    buffer.shader = compile("shaders/phong_vertex.glsl", "shaders/phong_fragment.glsl");
-    buffer.has_normals = true;
+struct BasicRenderingBuffer {
+    unsigned int VAO;
+    Shader shader;
+    int n_vertices;
+    Matrix model_transform;
+    Matrix view_transform;
+    Matrix projection_transform;
+    Vec3 color;
+    Vec3 viewer_position;
+};
 
-    for (int i = 0; i < rows - 1; ++i) {
-        for (int j = 0; j < cols - 1; ++j) {
-            float ii = i;
-            float jj = j;
-            std::vector<Vec3> vertices = {{ii, 0, jj},     {ii + 1, 0, jj}, {ii, 0, jj + 1},
-                                          {ii, 0, jj + 1}, {ii + 1, 0, jj}, {ii + 1, 0, jj + 1}};
-
-            for (auto v : vertices) {
-                buffer.vertices.push_back(v);
-                buffer.normals.push_back({0, 1, 0});
-            }
-        }
-    }
-
-    std::vector<float> data = pack_vertices_and_normals(buffer.vertices, buffer.normals);
-
-    glGenVertexArrays(1, &buffer.VAO);
-    glGenBuffers(1, &buffer.VBO);
+void draw(const BasicRenderingBuffer &buffer) {
+    use(buffer.shader);
     glBindVertexArray(buffer.VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer.VBO);
-    glBufferData(GL_ARRAY_BUFFER, byte_size(data), data.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
 
-    return buffer;
+    set_matrix4(buffer.shader, "model", buffer.model_transform);
+    set_matrix4(buffer.shader, "view", buffer.view_transform);
+    set_matrix4(buffer.shader, "projection", buffer.projection_transform);
+    set_vec3(buffer.shader, "color", buffer.color);
+    set_vec3(buffer.shader, "viewer_pos", buffer.viewer_position);
+
+    glDrawArrays(GL_TRIANGLES, 0, buffer.n_vertices);
+    glBindVertexArray(0);
 }
 
-Buffer make_axis(int ax) {
+void draw(const Rectangle &cube, const Camera &camera) {
+    BasicRenderingBuffer buffer = {.VAO = cube.VAO,
+                                   .shader = cube.shader,
+                                   .n_vertices = static_cast<int>(cube.vertices.size()),
+                                   .model_transform = cube.transform,
+                                   .view_transform = camera.view(),
+                                   .projection_transform = camera.projection(),
+                                   .color = cube.color,
+                                   .viewer_position = camera.position()};
+    draw(buffer);
+}
+
+//Buffer make_surface(int rows, int cols) {
+//    Buffer buffer;
+//    buffer.color = {0.2, 1, 0};
+//    buffer.transform = scale(translate(eye(), {-5, 0, -5}), 10);
+//    buffer.shader = compile("shaders/phong_vertex.glsl", "shaders/phong_fragment.glsl");
+//    buffer.has_normals = true;
+//
+//    for (int i = 0; i < rows - 1; ++i) {
+//        for (int j = 0; j < cols - 1; ++j) {
+//            float ii = i;
+//            float jj = j;
+//            std::vector<Vec3> vertices = {{ii, 0, jj},     {ii + 1, 0, jj}, {ii, 0, jj + 1},
+//                                          {ii, 0, jj + 1}, {ii + 1, 0, jj}, {ii + 1, 0, jj + 1}};
+//
+//            for (auto v : vertices) {
+//                buffer.vertices.push_back(v);
+//                buffer.normals.push_back({0, 1, 0});
+//            }
+//        }
+//    }
+//
+//    std::vector<float> data = pack_vertices_and_normals(buffer.vertices, buffer.normals);
+//
+//    glGenVertexArrays(1, &buffer.VAO);
+//    glGenBuffers(1, &buffer.VBO);
+//    glBindVertexArray(buffer.VAO);
+//    glBindBuffer(GL_ARRAY_BUFFER, buffer.VBO);
+//    glBufferData(GL_ARRAY_BUFFER, byte_size(data), data.data(), GL_STATIC_DRAW);
+//    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+//    glEnableVertexAttribArray(0);
+//    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+//    glEnableVertexAttribArray(1);
+//
+//    return buffer;
+//}
+
+Axis make_axis(int ax) {
     int size = 100;
     int n = size * 2 + 1;
-    Buffer buffer;
-    buffer.is_axis = true;
+    Axis buffer;
     buffer.vertices.reserve(n);
     buffer.color = (ax == 0) ? Vec3{1, 0, 0} : (ax == 1) ? Vec3{0, 1, 0} : Vec3{0, 0, 1};
     buffer.shader = compile("shaders/axis_vertex.glsl", "shaders/axis_fragment.glsl");
@@ -115,10 +135,12 @@ Buffer make_axis(int ax) {
     return buffer;
 }
 
-Buffer make_rectangle(float width, float height, float depth) {
-    Buffer buffer;
+Rectangle make_rectangle(float width, float height, float depth) {
+    Rectangle buffer;
+    buffer.width = width;
+    buffer.height = height;
+    buffer.depth = depth;
     buffer.transform = eye();
-    buffer.has_normals = true;
     buffer.color = {0.1, 0.4, 0.3};
     buffer.shader = compile("shaders/phong_vertex.glsl", "shaders/phong_fragment.glsl");
 
@@ -166,8 +188,6 @@ Buffer make_rectangle(float width, float height, float depth) {
 
     std::vector<float> data = pack_vertices_and_normals(buffer.vertices, buffer.normals);
 
-    log(data);
-
     glGenVertexArrays(1, &buffer.VAO);
     glGenBuffers(1, &buffer.VBO);
     glBindVertexArray(buffer.VAO);
@@ -181,8 +201,4 @@ Buffer make_rectangle(float width, float height, float depth) {
     return buffer;
 }
 
-Buffer make_cube(float size) { return make_rectangle(size, size, size); }
-
-// void log(const VertexNormal &vn) {
-//     log("vertex: " + string(vn.vertex) + " normal: " + string(vn.normal));
-// }
+Rectangle make_cube(float size) { return make_rectangle(size, size, size); }

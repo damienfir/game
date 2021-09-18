@@ -3,45 +3,46 @@
 #include "math.h"
 
 class Camera {
-public:
-  Camera()
-      : m_position({3, 3, 10}), m_up({0, 1, 0}), m_pitch(-15), m_yaw(-100),
-        m_movement_speed(3), m_faster_factor(2), m_sensitivity(0.2) {
-    m_projection =
-        perspective(0.1, 100.0, 0.05, 0.05 * 0.5625); // Use window size ratio
+  public:
+    Camera()
+        : m_position({3, 3, 10}), m_up({0, 1, 0}), m_pitch(-15), m_yaw(-100), m_movement_speed(3),
+          m_faster_factor(2), m_sensitivity(0.2) {
+        m_projection = perspective(0.1, 100.0, 0.05, 0.05 * 0.5625); // Use window size ratio
 
-    update_direction();
-    update_view_matrix();
-  }
+        update_direction();
+        update_view_matrix();
+    }
 
-  void move_horizontal(float t, bool faster);
+    void set_position(Vec3 position);
 
-  void move_vertical(float t, bool faster);
+    Vec3 move_horizontal(float t) const;
 
-  void move_towards(float t, bool faster);
+    Vec3 move_vertical(float t) const;
 
-  void rotate_direction(float dx, float dy);
+    Vec3 move_towards(float t) const;
 
-  Vec3 position() const { return m_position; }
+    void rotate_direction(float dx, float dy);
 
-  Matrix projection() const { return m_projection; }
+    Vec3 position() const { return m_position; }
 
-  Matrix view() const { return m_view; }
+    Matrix projection() const { return m_projection; }
 
-private:
-  void update_view_matrix();
+    Matrix view() const { return m_view; }
 
-  void update_direction();
+  private:
+    void update_view_matrix();
 
-  Vec3 m_position;
-  Vec3 m_direction;
-  Vec3 m_up;
-  float m_pitch;
-  float m_yaw;
-  Matrix m_view;
-  Matrix m_projection;
-  float m_movement_speed;
-  float m_faster_factor;
+    void update_direction();
 
-  float m_sensitivity;
+    Vec3 m_position;
+    Vec3 m_direction;
+    Vec3 m_up;
+    float m_pitch;
+    float m_yaw;
+    Matrix m_view;
+    Matrix m_projection;
+    float m_movement_speed;
+    float m_faster_factor;
+
+    float m_sensitivity;
 };
