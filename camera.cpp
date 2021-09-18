@@ -52,3 +52,4 @@ void Camera::update_direction() {
 void Camera::update_view_matrix() {
   m_view = lookat(m_position, m_position + m_direction, m_up);
 }
+

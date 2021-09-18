@@ -3,23 +3,21 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <chrono>
+#include <optional>
 
 #include "buffer.h"
 #include "logging.h"
 
 class Timer {
-public:
-    Timer() {
-        reset();
-    }
+  public:
+    Timer() { reset(); }
 
-    void reset() {
-        m_timepoint = std::chrono::high_resolution_clock::now();
-    }
+    void reset() { m_timepoint = std::chrono::high_resolution_clock::now(); }
 
     float seconds_elapsed() {
         auto new_timepoint = std::chrono::high_resolution_clock::now();
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(new_timepoint - m_timepoint).count();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(new_timepoint - m_timepoint)
+                      .count();
         return ms / 1000.f;
     }
 
@@ -29,94 +27,23 @@ public:
         return s;
     }
 
-private:
+  private:
     std::chrono::time_point<std::chrono::high_resolution_clock> m_timepoint;
 };
 
 class FPSCounter {
-public:
+  public:
     FPSCounter() : m_last_dt(1) {}
 
-    void tick(float dt) {
-        m_last_dt = dt;
-    }
+    void tick(float dt) { m_last_dt = dt; }
 
-    float fps() const {
-        return 1.f / m_last_dt;
-    }
+    float fps() const { return 1.f / m_last_dt; }
 
-private:
+  private:
     float m_last_dt;
 };
 
-template<typename T>
-class CircularBuffer {
-public:
-    explicit CircularBuffer(int n) : m_next(0) {
-        m_buffer.resize(n);
-    }
-
-    void add(T element) {
-        m_buffer[m_next++ % size()] = element;
-    }
-
-    T operator[](int i) const {
-        return m_buffer[i];
-    }
-
-    bool is_full() const {
-        return m_next >= size();
-    }
-
-    int size() const {
-        return m_buffer.size();
-    }
-
-private:
-    std::vector<T> m_buffer;
-    int m_next;
-};
-
-float average(const CircularBuffer<float> &buffer) {
-    int n = buffer.size();
-    float value = 0;
-    for (int i = 0; i < n; ++i) value += buffer[i] / (float) n;
-    return value;
-}
-
-class CameraRotation {
-public:
-    CameraRotation() : m_xs(CircularBuffer<float>(3)), m_ys(CircularBuffer<float>(3)), m_new(false) {}
-
-    void set(float x, float y) {
-        m_xs.add(x);
-        m_ys.add(y);
-        m_new = true;
-    }
-
-    float x() const {
-        if (!m_new) return 0;
-        if (!m_xs.is_full()) return 0;
-        return average(m_xs);
-    }
-
-    float y() const {
-        if (!m_new) return 0;
-        if (!m_ys.is_full()) return 0;
-        return average(m_ys);
-    }
-
-    void reset() {
-        m_new = false;
-    }
-
-private:
-    CircularBuffer<float> m_xs;
-    CircularBuffer<float> m_ys;
-    bool m_new;
-};
-
-struct Controls {
+struct CameraControls {
     bool move_left;
     bool move_right;
     bool move_forward;
@@ -124,28 +51,26 @@ struct Controls {
     bool move_up;
     bool move_down;
     bool move_faster;
-    CameraRotation rotation;
+    float rotation_x;
+    float rotation_y;
+};
+
+struct RenderControls {
     bool wireframe = false;
 };
 
-
 struct Axes {
-    Buffer<Vertex> x_axis;
-    Buffer<Vertex> y_axis;
-    Buffer<Vertex> z_axis;
+    Buffer x_axis;
+    Buffer y_axis;
+    Buffer z_axis;
 };
 
-Axes axes;
 Camera camera;
-Controls controls;
-Buffer<VertexNormal> floor;
-Buffer<VertexNormal> cube;
-
-void draw(Axes axes, const Camera &camera) {
-    draw(axes.x_axis, camera);
-    draw(axes.y_axis, camera);
-    draw(axes.z_axis, camera);
-}
+Axes axes;
+Buffer floor;
+Buffer cube;
+CameraControls camera_controls;
+RenderControls render_controls;
 
 Axes make_axes() {
     Axes a;
@@ -153,6 +78,12 @@ Axes make_axes() {
     a.y_axis = make_axis(1);
     a.z_axis = make_axis(2);
     return a;
+}
+
+void draw(Axes axes, const Camera &camera) {
+    draw(axes.x_axis, camera);
+    draw(axes.y_axis, camera);
+    draw(axes.z_axis, camera);
 }
 
 void display() {
@@ -164,36 +95,37 @@ void display() {
     draw(cube, camera);
 }
 
+void update(float dt) {
+    if (camera_controls.move_right) {
+        camera.move_horizontal(dt, camera_controls.move_faster);
+    } else if (camera_controls.move_left) {
+        camera.move_horizontal(-dt, camera_controls.move_faster);
+    }
+
+    if (camera_controls.move_backwards) {
+        camera.move_towards(-dt, camera_controls.move_faster);
+    } else if (camera_controls.move_forward) {
+        camera.move_towards(dt, camera_controls.move_faster);
+    }
+
+    if (camera_controls.move_up) {
+        camera.move_vertical(dt, camera_controls.move_faster);
+    } else if (camera_controls.move_down) {
+        camera.move_vertical(-dt, camera_controls.move_faster);
+    }
+
+    if (camera_controls.rotation_x != 0 || camera_controls.rotation_y != 0) {
+        camera.rotate_direction(camera_controls.rotation_x, camera_controls.rotation_y);
+        camera_controls.rotation_x = 0;
+        camera_controls.rotation_y = 0;
+    }
+}
+
 void init() {
     floor = make_surface(10, 10);
     cube = make_cube(3);
     axes = make_axes();
     glEnable(GL_DEPTH_TEST);
-}
-
-void update(float dt) {
-    if (controls.move_right) {
-        camera.move_horizontal(dt, controls.move_faster);
-    } else if (controls.move_left) {
-        camera.move_horizontal(-dt, controls.move_faster);
-    }
-
-    if (controls.move_backwards) {
-        camera.move_towards(-dt, controls.move_faster);
-    } else if (controls.move_forward) {
-        camera.move_towards(dt, controls.move_faster);
-    }
-
-    if (controls.move_up) {
-        camera.move_vertical(dt, controls.move_faster);
-    } else if (controls.move_down) {
-        camera.move_vertical(-dt, controls.move_faster);
-    }
-
-    if (controls.rotation.y() != 0 || controls.rotation.y() != 0) {
-        camera.rotate_direction(controls.rotation.x(), controls.rotation.y());
-        controls.rotation.reset();
-    }
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -203,75 +135,77 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_A) {
         if (action == GLFW_PRESS) {
-            controls.move_right = false;
-            controls.move_left = true;
+            camera_controls.move_right = false;
+            camera_controls.move_left = true;
         } else if (action == GLFW_RELEASE) {
-            controls.move_left = false;
+            camera_controls.move_left = false;
         }
     }
 
     if (key == GLFW_KEY_D) {
         if (action == GLFW_PRESS) {
-            controls.move_left = false;
-            controls.move_right = true;
+            camera_controls.move_left = false;
+            camera_controls.move_right = true;
         } else if (action == GLFW_RELEASE) {
-            controls.move_right = false;
+            camera_controls.move_right = false;
         }
     }
 
     if (key == GLFW_KEY_W) {
         if (action == GLFW_PRESS) {
-            controls.move_backwards = false;
-            controls.move_forward = true;
+            camera_controls.move_backwards = false;
+            camera_controls.move_forward = true;
         } else if (action == GLFW_RELEASE) {
-            controls.move_forward = false;
+            camera_controls.move_forward = false;
         }
     }
 
     if (key == GLFW_KEY_S) {
         if (action == GLFW_PRESS) {
-            controls.move_forward = false;
-            controls.move_backwards = true;
+            camera_controls.move_forward = false;
+            camera_controls.move_backwards = true;
         } else if (action == GLFW_RELEASE) {
-            controls.move_backwards = false;
+            camera_controls.move_backwards = false;
         }
     }
 
     if (key == GLFW_KEY_E) {
         if (action == GLFW_PRESS) {
-            controls.move_down = false;
-            controls.move_up = true;
+            camera_controls.move_down = false;
+            camera_controls.move_up = true;
         } else if (action == GLFW_RELEASE) {
-            controls.move_up = false;
+            camera_controls.move_up = false;
         }
     }
 
     if (key == GLFW_KEY_Q) {
         if (action == GLFW_PRESS) {
-            controls.move_up = false;
-            controls.move_down = true;
+            camera_controls.move_up = false;
+            camera_controls.move_down = true;
         } else if (action == GLFW_RELEASE) {
-            controls.move_down = false;
+            camera_controls.move_down = false;
         }
     }
 
     if (key == GLFW_KEY_LEFT_SHIFT) {
         if (action == GLFW_PRESS) {
-            controls.move_faster = true;
+            camera_controls.move_faster = true;
         } else if (action == GLFW_RELEASE) {
-            controls.move_faster = false;
+            camera_controls.move_faster = false;
         }
     }
 
     if (key == GLFW_KEY_BACKSLASH && action == GLFW_PRESS) {
-        controls.wireframe = !controls.wireframe;
-        if (controls.wireframe) {
+        render_controls.wireframe = !render_controls.wireframe;
+        if (render_controls.wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         } else {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
     }
 }
+
+
 
 struct Mouse {
     int x;
@@ -283,7 +217,8 @@ Mouse mouse;
 Timer mouse_throttle;
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
-    if (mouse_throttle.seconds_elapsed() < 0.016) return;
+    if (mouse_throttle.seconds_elapsed() < 0.016)
+        return;
     mouse_throttle.tick();
 
     if (!mouse.already_moved) {
@@ -292,10 +227,13 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
         mouse.y = ypos;
     }
 
-    controls.rotation.set(xpos - mouse.x, mouse.y - ypos);
+    camera_controls.rotation_x = xpos - mouse.x;
+    camera_controls.rotation_y = mouse.y - ypos;
     mouse.x = xpos;
     mouse.y = ypos;
 }
+
+
 
 int main(int argc, char **argv) {
     GLFWwindow *window;
@@ -327,8 +265,8 @@ int main(int argc, char **argv) {
         update(dt);
         display();
 
-//        fps_counter.tick(dt);
-//        log("FPS: " + std::to_string(fps_counter.fps()));
+        //        fps_counter.tick(dt);
+        //        log("FPS: " + std::to_string(fps_counter.fps()));
 
         glfwSwapBuffers(window);
         glfwPollEvents();

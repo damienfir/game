@@ -1,0 +1,66 @@
+template<typename T>
+class CircularBuffer {
+public:
+    explicit CircularBuffer(int n) : m_next(0) {
+        m_buffer.resize(n);
+    }
+
+    void add(T element) {
+        m_buffer[m_next++ % size()] = element;
+    }
+
+    T operator[](int i) const {
+        return m_buffer[i];
+    }
+
+    bool is_full() const {
+        return m_next >= size();
+    }
+
+    int size() const {
+        return m_buffer.size();
+    }
+
+private:
+    std::vector<T> m_buffer;
+    int m_next;
+};
+
+float average(const CircularBuffer<float> &buffer) {
+    int n = buffer.size();
+    float value = 0;
+    for (int i = 0; i < n; ++i) value += buffer[i] / (float) n;
+    return value;
+}
+
+class CameraRotation {
+public:
+    CameraRotation() : m_xs(CircularBuffer<float>(3)), m_ys(CircularBuffer<float>(3)), m_new(false) {}
+
+    void set(float x, float y) {
+        m_xs.add(x);
+        m_ys.add(y);
+        m_new = true;
+    }
+
+    float x() const {
+        if (!m_new) return 0;
+        if (!m_xs.is_full()) return 0;
+        return average(m_xs);
+    }
+
+    float y() const {
+        if (!m_new) return 0;
+        if (!m_ys.is_full()) return 0;
+        return average(m_ys);
+    }
+
+    void reset() {
+        m_new = false;
+    }
+
+private:
+    CircularBuffer<float> m_xs;
+    CircularBuffer<float> m_ys;
+    bool m_new;
+};
