@@ -121,8 +121,6 @@ IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
         return d;
     }
 
-    std::string faces[] = {"left", "right", "top", "bottom", "front", "back"};
-
     float distances[] = {
         pos.x - r.width / 2.f - sphere.pos.x,    // left
         sphere.pos.x - (pos.x + r.width / 2.f),  // right
@@ -146,9 +144,6 @@ IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
     if (intersected) {
         d.intersected = true;
         d.normal = normals[index_smallest_distance];
-        log(faces[index_smallest_distance]);
-        log(distances[index_smallest_distance]);
-        log(string(d.normal));
     }
     return d;
 }
@@ -181,11 +176,7 @@ void update(Camera &camera, const CameraControls &controls, float dt) {
     for (const auto &other : world.rectangles) {
         IntersectData d = intersect(other, sphere);
         if (d.intersected) {
-            log("hit rect: " + string(other.transform * other.center));
-            log(other.width);
-            log(string(other.color));
             velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
-            break;
         }
     }
 
