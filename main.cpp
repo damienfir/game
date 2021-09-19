@@ -102,56 +102,98 @@ void display() {
         draw(buffer, camera);
     }
 }
+struct IntersectData {
+    bool intersected = false;
+    Vec3 normal;
+};
 
-bool intersect(const Rectangle& other, const Vec3& point) {
-    return false;
+struct Sphere {
+    Vec3 pos;
+    float radius;
+};
+
+IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
+    IntersectData d;
+    Vec3 pos = r.transform * r.center;
+
+    if (norm(sphere.pos - pos) - sphere.radius >
+        norm({r.width / 2.f, r.height / 2.f, r.depth / 2.f})) {
+        return d;
+    }
+
+    std::string faces[] = {"left", "right", "top", "bottom", "front", "back"};
+
+    float distances[] = {
+        pos.x - r.width / 2.f - sphere.pos.x,    // left
+        sphere.pos.x - (pos.x + r.width / 2.f),  // right
+        sphere.pos.y - (pos.y + r.height / 2.f), // top
+        pos.y - r.height / 2.f - sphere.pos.y,   // bottom
+        sphere.pos.z - (pos.z + r.depth / 2.f),  // front
+        pos.z - r.depth / 2.f - sphere.pos.z,    // back
+    };
+    int index_smallest_distance = -1;
+    bool intersected = false;
+    for (int i = 0; i < 6; ++i) {
+        if (distances[i] >= 0 && distances[i] < sphere.radius) {
+            if (index_smallest_distance == -1 ||
+                distances[i] < distances[index_smallest_distance]) {
+                index_smallest_distance = i;
+            }
+            intersected = true;
+        }
+    }
+    Vec3 normals[] = {{-1, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    if (intersected) {
+        d.intersected = true;
+        d.normal = normals[index_smallest_distance];
+        log(faces[index_smallest_distance]);
+        log(distances[index_smallest_distance]);
+        log(string(d.normal));
+    }
+    return d;
 }
 
 void update(Camera &camera, const CameraControls &controls, float dt) {
     Vec3 velocity;
 
     if (controls.move_right) {
-        velocity = camera.move_horizontal(dt);
+        velocity = camera.move_horizontal();
     } else if (controls.move_left) {
-        velocity = camera.move_horizontal(-dt);
+        velocity = 0 - camera.move_horizontal();
     }
 
     if (controls.move_backwards) {
-        velocity += camera.move_towards(-dt);
+        velocity -= camera.move_towards();
     } else if (controls.move_forward) {
-        velocity += camera.move_towards(dt);
+        velocity += camera.move_towards();
     }
 
     if (controls.move_up) {
-        velocity += camera.move_vertical(dt);
+        velocity += camera.move_vertical();
     } else if (controls.move_down) {
-        velocity += camera.move_vertical(-dt);
+        velocity -= camera.move_vertical();
     }
 
     if (controls.move_faster)
         velocity *= 2.f;
 
-    Vec3 new_position = camera.position() + velocity;
-
+    Sphere sphere = {.pos = camera.position(), .radius = 0.3};
     for (const auto &other : world.rectangles) {
-        if (intersect(other, new_position)) {
-            new_position = camera.position();
+        IntersectData d = intersect(other, sphere);
+        if (d.intersected) {
+            log("hit rect: " + string(other.transform * other.center));
+            log(other.width);
+            log(string(other.color));
+            velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
             break;
         }
     }
 
-    camera.set_position(new_position);
+    camera.set_position(camera.position() + velocity * dt);
 
     if (controls.rotation_x != 0 || controls.rotation_y != 0) {
         camera.rotate_direction(controls.rotation_x, controls.rotation_y);
     }
-
-    //    Vec3 current_position = camera.position();
-    //    for (const Buffer& other : buffers) {
-    //        if (intersect(other, current_position)) {
-    //
-    //        }
-    //    }
 }
 
 void update(float dt) {
@@ -170,13 +212,16 @@ void init() {
         float ty = (rand() % 300 - 150) / 10.f;
         float tz = -(rand() % 300) / 10.f;
         cube.transform = translate(cube.transform, {tx, ty, tz});
-        float r = (rand() % 1000) / 1000.f;
-        float g = (rand() % 1000) / 1000.f;
-        float b = (rand() % 1000) / 1000.f;
+        float r = (rand() % 900 + 100) / 1000.f;
+        float g = (rand() % 900 + 100) / 1000.f;
+        float b = (rand() % 900 + 100) / 1000.f;
         cube.color = {r, g, b};
 
         world.rectangles.push_back(cube);
     }
+
+//    auto cube = make_cube(5);
+//    world.rectangles.push_back({cube});
 
     axes = make_axes();
     glEnable(GL_DEPTH_TEST);

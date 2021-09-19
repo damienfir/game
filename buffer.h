@@ -17,6 +17,7 @@ struct Rectangle {
     float width;
     float height;
     float depth;
+    Vec3 center;
     unsigned int VAO;
     unsigned int VBO;
     Shader shader;

@@ -59,6 +59,14 @@ Matrix translation(const Vec3 &t) {
     return m;
 }
 
+Vec3 operator*(const Matrix &A, const Vec3 &v) {
+    Vec3 r;
+    r.x = A.val(0, 0) * v.x + A.val(0, 1) * v.y + A.val(0, 2) * v.z + A.val(0, 3);
+    r.y = A.val(1, 0) * v.x + A.val(1, 1) * v.y + A.val(1, 2) * v.z + A.val(1, 3);
+    r.z = A.val(2, 0) * v.x + A.val(2, 1) * v.y + A.val(2, 2) * v.z + A.val(2, 3);
+    return r;
+}
+
 Matrix operator*(const Matrix &A, const Matrix &B) {
     assert(A.cols() == B.rows());
 
@@ -88,6 +96,20 @@ std::string string(const Matrix &m) {
 
 Vec3 operator-(const Vec3 &p, const Vec3 &q) { return {p.x - q.x, p.y - q.y, p.z - q.z}; }
 
+Vec3 operator-(float a, const Vec3 &p) {
+    Vec3 q;
+    q.x = a - p.x;
+    q.y = a - p.y;
+    q.z = a - p.z;
+    return q;
+}
+
+void operator-=(Vec3 &p, const Vec3 &q) {
+    p.x -= q.x;
+    p.y -= q.y;
+    p.z -= q.z;
+}
+
 Vec3 operator+(const Vec3 &p, const Vec3 &q) { return {p.x + q.x, p.y + q.y, p.z + q.z}; }
 
 void operator+=(Vec3 &p, const Vec3 &q) {
@@ -114,6 +136,8 @@ Vec3 cross(const Vec3 &a, const Vec3 &b) {
     return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
 }
 
+float dot(const Vec3 &a, const Vec3 &b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+
 std::string string(const Vec3 &v) {
     return std::to_string(v.x) + " " + std::to_string(v.y) + " " + std::to_string(v.z);
 }
@@ -137,7 +161,6 @@ Matrix transpose(const Matrix &A) {
 }
 
 float radians(float deg) { return deg * (float)M_PI / 180.f; }
-
 Matrix scale(const Matrix &A, float factor) {
     Matrix B = A;
     B(0, 0) *= factor;
@@ -145,7 +168,6 @@ Matrix scale(const Matrix &A, float factor) {
     B(2, 2) *= factor;
     return B;
 }
-
 Matrix rotation_y(float deg) {
     Matrix R = eye();
     R(0, 0) = std::cos(radians(deg));
@@ -154,9 +176,6 @@ Matrix rotation_y(float deg) {
     R(2, 2) = std::cos(radians(deg));
     return R;
 }
-
-Matrix rotate_y(const Matrix &A, float deg) {
-    return rotation_y(deg) * A;
-}
+Matrix rotate_y(const Matrix &A, float deg) { return rotation_y(deg) * A; }
 
 void log(const Vec3 &v) { std::cout << string(v) << std::endl; }

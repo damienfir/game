@@ -17,6 +17,10 @@ void operator+=(Vec3 &p, const Vec3 &q);
 
 Vec3 operator-(const Vec3 &p, const Vec3 &q);
 
+Vec3 operator-(float a, const Vec3 &p);
+
+void operator-=(Vec3 &p, const Vec3 &q);
+
 Vec3 operator/(const Vec3 &v, float a);
 
 Vec3 operator*(const Vec3 &v, float a);
@@ -28,6 +32,8 @@ Vec3 normalize(const Vec3 &v);
 float norm(const Vec3 &v);
 
 Vec3 cross(const Vec3 &a, const Vec3 &b);
+
+float dot(const Vec3&a, const Vec3& b);
 
 class Matrix {
   public:
@@ -49,6 +55,8 @@ class Matrix {
 Matrix eye();
 
 Matrix perspective(float near, float far, float right, float top);
+
+Vec3 operator*(const Matrix &A, const Vec3 &v);
 
 Matrix operator*(const Matrix &A, const Matrix &B);
 

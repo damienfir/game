@@ -15,11 +15,11 @@ class Camera {
 
     void set_position(Vec3 position);
 
-    Vec3 move_horizontal(float t) const;
+    Vec3 move_horizontal() const;
 
-    Vec3 move_vertical(float t) const;
+    Vec3 move_vertical() const;
 
-    Vec3 move_towards(float t) const;
+    Vec3 move_towards() const;
 
     void rotate_direction(float dx, float dy);
 

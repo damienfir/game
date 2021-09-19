@@ -141,6 +141,7 @@ Rectangle make_rectangle(float width, float height, float depth) {
     buffer.height = height;
     buffer.depth = depth;
     buffer.transform = eye();
+    buffer.center = {0, 0, 0};
     buffer.color = {0.1, 0.4, 0.3};
     buffer.shader = compile("shaders/phong_vertex.glsl", "shaders/phong_fragment.glsl");
 
