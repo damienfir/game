@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <chrono>
+#include <cmath>
 #include <optional>
 
 #include "buffer.h"
@@ -66,8 +67,54 @@ struct Axes {
     Axis z_axis;
 };
 
+struct Tetra {
+    Mesh mesh;
+    SolidObjectProperties obj;
+    BasicRenderingBuffer rendering;
+};
+
+struct Octa {
+    Mesh mesh;
+    SolidObjectProperties obj;
+    BasicRenderingBuffer rendering;
+};
+
+Vec3 normal_for_face(Vec3 a, Vec3 b, Vec3 c) {
+    Vec3 v = c - a;
+    Vec3 w = b - a;
+    Vec3 n = normalize(cross(v, w)); // verified correct order
+    return n;
+}
+
+Tetra make_tetra() {
+    Vec3 v0 = {1, 0, -1 / std::sqrt(2.f)};
+    Vec3 v1 = {-1, 0, -1 / std::sqrt(2.f)};
+    Vec3 v2 = {0, 1, 1 / std::sqrt(2.f)};
+    Vec3 v3 = {0, -1, 1 / std::sqrt(2.f)};
+
+    Tetra t;
+    t.mesh.vertices = {v0, v2, v1, v0, v3, v2, v1, v2, v3, v0, v3, v1};
+
+    Vec3 n0 = normal_for_face(v0, v2, v1);
+    Vec3 n1 = normal_for_face(v0, v3, v2);
+    Vec3 n2 = normal_for_face(v1, v2, v3);
+    Vec3 n4 = normal_for_face(v0, v3, v1);
+    t.mesh.normals = {n0, n0, n0, n1, n1, n1, n2, n2, n2, n4, n4, n4};
+
+    t.obj.transform = eye();
+    t.obj.color = {0.3, 0.3, 0.4};
+    t.rendering = init_rendering(t.mesh);
+
+    return t;
+}
+
+//Octa make_octa() {
+//    Vec3 top = {}
+//}
+
 struct World {
     std::vector<Rectangle> rectangles;
+    std::vector<Tetra> tetras;
 };
 
 World world;
@@ -98,10 +145,15 @@ void display() {
         draw(axes, camera);
     }
 
-    for (const auto &buffer : world.rectangles) {
-        draw(buffer, camera);
+    for (const auto &rect : world.rectangles) {
+        draw(rect.rendering, rect.obj, camera);
+    }
+
+    for (const auto &tetra : world.tetras) {
+        draw(tetra.rendering, tetra.obj, camera);
     }
 }
+
 struct IntersectData {
     bool intersected = false;
     Vec3 normal;
@@ -114,7 +166,7 @@ struct Sphere {
 
 IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
     IntersectData d;
-    Vec3 pos = r.transform * r.center;
+    Vec3 pos = r.obj.transform * r.center;
 
     if (norm(sphere.pos - pos) - sphere.radius >
         norm({r.width / 2.f, r.height / 2.f, r.depth / 2.f})) {
@@ -176,6 +228,7 @@ void update(Camera &camera, const CameraControls &controls, float dt) {
     for (const auto &other : world.rectangles) {
         IntersectData d = intersect(other, sphere);
         if (d.intersected) {
+            // standard collision response
             velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
         }
     }
@@ -195,24 +248,26 @@ void update(float dt) {
 
 void init() {
     //    buffers = {make_surface(10, 10)};
+    //
+    //    for (int i = 0; i < 100; ++i) {
+    //        float size = 5 * (rand() % 90) / 90.f;
+    //        Rectangle cube = make_cube(size);
+    //        float tx = (rand() % 300 - 150) / 10.f;
+    //        float ty = (rand() % 300 - 150) / 10.f;
+    //        float tz = -(rand() % 300) / 10.f;
+    //        cube.obj.transform = translate(cube.obj.transform, {tx, ty, tz});
+    //        float r = (rand() % 900 + 100) / 1000.f;
+    //        float g = (rand() % 900 + 100) / 1000.f;
+    //        float b = (rand() % 900 + 100) / 1000.f;
+    //        cube.obj.color = {r, g, b};
+    //
+    //        world.rectangles.push_back(cube);
+    //    }
 
-    for (int i = 0; i < 100; ++i) {
-        float size = 5 * (rand() % 90) / 90.f;
-        Rectangle cube = make_cube(size);
-        float tx = (rand() % 300 - 150) / 10.f;
-        float ty = (rand() % 300 - 150) / 10.f;
-        float tz = -(rand() % 300) / 10.f;
-        cube.transform = translate(cube.transform, {tx, ty, tz});
-        float r = (rand() % 900 + 100) / 1000.f;
-        float g = (rand() % 900 + 100) / 1000.f;
-        float b = (rand() % 900 + 100) / 1000.f;
-        cube.color = {r, g, b};
+    //    auto cube = make_cube(5);
+    //    world.rectangles.push_back({cube});
 
-        world.rectangles.push_back(cube);
-    }
-
-//    auto cube = make_cube(5);
-//    world.rectangles.push_back({cube});
+    world.tetras = {make_tetra()};
 
     axes = make_axes();
     glEnable(GL_DEPTH_TEST);

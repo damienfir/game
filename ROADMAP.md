@@ -1,12 +1,13 @@
 Graphics
 - lights
-- Phong rendering
-  - materials
++ Phong rendering
+- noisy phong rendering for visual clues
+- materials
 
 Physics
 - walk on terrain
 - collision
-  - simple wall collisions
+  + simple wall collisions
 
 Mesh
 - load simple mesh and display

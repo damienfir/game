@@ -1,9 +1,9 @@
 #pragma once
 
-#include <GL/glew.h>
-#include "shader.h"
-#include "math.h"
 #include "camera.h"
+#include "math.h"
+#include "shader.h"
+#include <GL/glew.h>
 
 struct Axis {
     unsigned int VAO;
@@ -13,25 +13,43 @@ struct Axis {
     Vec3 color;
 };
 
+struct BasicRenderingBuffer {
+    unsigned int VAO;
+    unsigned int VBO;
+    Shader shader;
+    int n_vertices;
+};
+
+struct SolidObjectProperties {
+    Vec3 color;
+    Matrix transform;
+};
+
+struct Mesh {
+    std::vector<Vec3> vertices;
+    std::vector<Vec3> normals;
+};
+
 struct Rectangle {
     float width;
     float height;
     float depth;
     Vec3 center;
-    unsigned int VAO;
-    unsigned int VBO;
-    Shader shader;
-    std::vector<Vec3> vertices;
-    std::vector<Vec3> normals;
-    Vec3 color;
-    Matrix transform;
+    Mesh mesh;
+    SolidObjectProperties obj;
+    BasicRenderingBuffer rendering;
 };
+
+void draw(const BasicRenderingBuffer &buffer, const SolidObjectProperties &obj,
+          const Camera &camera);
+
+BasicRenderingBuffer init_rendering(const Mesh &mesh);
 
 void draw(const Axis &axis, const Camera &camera);
 
-void draw(const Rectangle &cube, const Camera &camera);
+// void draw(const Rectangle &cube, const Camera &camera);
 
-//Buffer make_surface(int rows, int cols);
+// Buffer make_surface(int rows, int cols);
 
 Axis make_axis(int ax);
 
