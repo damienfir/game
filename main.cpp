@@ -80,10 +80,47 @@ struct Octa {
 };
 
 Vec3 normal_for_face(Vec3 a, Vec3 b, Vec3 c) {
-    Vec3 v = c - a;
-    Vec3 w = b - a;
+    Vec3 v = b - a;
+    Vec3 w = c - a;
     Vec3 n = normalize(cross(v, w)); // verified correct order
     return n;
+}
+
+std::vector<Vec3> compute_normals(const std::vector<Vec3> &vertices) {
+    // assuming the normals are packed by faces
+    std::vector<Vec3> normals;
+    normals.reserve(vertices.size());
+    for (int i = 0; i < vertices.size(); i += 3) {
+        Vec3 n = normal_for_face(vertices[i], vertices[i + 1], vertices[i + 2]);
+        normals.push_back(n);
+        normals.push_back(n);
+        normals.push_back(n);
+    }
+    return normals;
+}
+
+Mesh tetra_mesh(Vec3 v0, Vec3 v1, Vec3 v2, Vec3 v3) {
+    Mesh mesh;
+    mesh.vertices = {v0, v2, v3, v0, v1, v2, v0, v3, v1, v1, v3, v2};
+    mesh.normals = compute_normals(mesh.vertices);
+    return mesh;
+}
+
+Mesh tetra_from_face(Vec3 a, Vec3 b, Vec3 c) {
+    Vec3 n = normal_for_face(a, b, c);
+    Vec3 center = (a + b + c) / 3.f;
+    Vec3 d = center + n * norm((c + (a - c) / 2.f - b));
+
+    return tetra_mesh(a, c, b, d);
+}
+
+Tetra make_tetra(Mesh mesh) {
+    Tetra t;
+    t.mesh = mesh;
+    t.obj.transform = eye();
+    t.obj.color = {0.3, 0.3, 0.4};
+    t.rendering = init_rendering(t.mesh);
+    return t;
 }
 
 Tetra make_tetra() {
@@ -91,30 +128,44 @@ Tetra make_tetra() {
     Vec3 v1 = {-1, 0, -1 / std::sqrt(2.f)};
     Vec3 v2 = {0, 1, 1 / std::sqrt(2.f)};
     Vec3 v3 = {0, -1, 1 / std::sqrt(2.f)};
-
-    Tetra t;
-    t.mesh.vertices = {v0, v2, v1, v0, v3, v2, v1, v2, v3, v0, v3, v1};
-
-    Vec3 n0 = normal_for_face(v0, v2, v1);
-    Vec3 n1 = normal_for_face(v0, v3, v2);
-    Vec3 n2 = normal_for_face(v1, v2, v3);
-    Vec3 n4 = normal_for_face(v0, v3, v1);
-    t.mesh.normals = {n0, n0, n0, n1, n1, n1, n2, n2, n2, n4, n4, n4};
-
-    t.obj.transform = eye();
-    t.obj.color = {0.3, 0.3, 0.4};
-    t.rendering = init_rendering(t.mesh);
-
-    return t;
+    return make_tetra(tetra_from_face(v0, v1, v2));
 }
 
-//Octa make_octa() {
-//    Vec3 top = {}
-//}
+Octa make_octa() {
+    Vec3 top = {0, 1, 0};
+    Vec3 bottom = {0, -1, 0};
+    Vec3 front = {0, 0, 1};
+    Vec3 back = {0, 0, -1};
+    Vec3 left = {-1, 0, 0};
+    Vec3 right = {1, 0, 0};
+
+    Octa o;
+    o.mesh.vertices = {right, top,    front, back, top,    right, left,   top,
+                       back,  front,  top,   left, right,  front, bottom, back,
+                       right, bottom, left,  back, bottom, front, left,   bottom};
+    o.mesh.normals = compute_normals(o.mesh.vertices);
+    for (Vec3 &v : o.mesh.vertices) {
+        v *= 2.f / std::sqrt(2.f);
+    }
+
+    o.obj.transform = eye();
+    o.obj.color = {0.3, 0.4, 0.3};
+    o.rendering = init_rendering(o.mesh);
+
+    return o;
+}
+
+Tetra tetra_from_octa_face(const Octa& octa, int face) {
+    Vec3 a = octa.mesh.vertices[face*3];
+    Vec3 b = octa.mesh.vertices[face*3+1];
+    Vec3 c = octa.mesh.vertices[face*3+2];
+    return make_tetra(tetra_from_face(a, b, c));
+}
 
 struct World {
     std::vector<Rectangle> rectangles;
     std::vector<Tetra> tetras;
+    std::vector<Octa> octas;
 };
 
 World world;
@@ -151,6 +202,10 @@ void display() {
 
     for (const auto &tetra : world.tetras) {
         draw(tetra.rendering, tetra.obj, camera);
+    }
+
+    for (const auto &octa : world.octas) {
+        draw(octa.rendering, octa.obj, camera);
     }
 }
 
@@ -267,7 +322,16 @@ void init() {
     //    auto cube = make_cube(5);
     //    world.rectangles.push_back({cube});
 
-    world.tetras = {make_tetra()};
+//    world.tetras = {make_tetra()};
+    world.octas = {make_octa()};
+    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 0));
+    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 1));
+    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 2));
+    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 3));
+    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 4));
+    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 5));
+    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 6));
+    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 7));
 
     axes = make_axes();
     glEnable(GL_DEPTH_TEST);
