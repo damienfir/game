@@ -389,8 +389,6 @@ void update(Camera &camera, const CameraControls &controls, float dt) {
     }
 
     camera.set_position(camera.position() + velocity * dt);
-
-    mouse_pick();
 }
 
 void update(float dt) { update(camera, camera_controls, dt); }
@@ -580,15 +578,16 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
     } else {
         camera.rotate_direction(rx, ry);
     }
-    mouse_pick();
+
+    if (!camera_controls.move_around) {
+        mouse_pick();
+    }
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     log(xoffset);
     log(yoffset);
 }
-
 
 int main(int argc, char **argv) {
     GLFWwindow *window;

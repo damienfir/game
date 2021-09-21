@@ -4,7 +4,6 @@
 
 class Camera {
   public:
-    //    {3, 3, 10}
     Camera()
         : m_position({3, 2, 5}), m_direction(normalize({-0.5, -0.2, -1})), m_up({0, 1, 0}),
           m_movement_speed(6), m_faster_factor(2), m_sensitivity(0.2) {
