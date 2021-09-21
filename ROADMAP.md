@@ -1,20 +1,25 @@
 Graphics
-- lights
-+ Phong rendering
-- noisy phong rendering for visual clues
-- materials
+- Lights
+- Noisy Phong rendering for visual clues
+- Materials
 
 Physics
-- walk on terrain
-- collision
-  + simple wall collisions
+- Walk on terrain
+- Collisions with polyhedra
 
 Mesh
-- load simple mesh and display
+- Load simple mesh and display
 
 Engine
 - FPS counter on screen
 
-
 Geometry
-- use spatial transformation to add octa/tetra to existing face instead of recreating a whole new object
+- Use spatial transformation to add octa/tetra to existing face instead of recreating a whole new object
+
+Editor
+- Move selected objects as whole
+  - Selected objects are groups of polyhedra
+- Make scroll wheel work
+- Change color of object/polyhedra
+- Select by face visually, one color per face
+- Undo/redo
