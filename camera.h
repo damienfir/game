@@ -4,13 +4,12 @@
 
 class Camera {
   public:
-//    {3, 3, 10}
+    //    {3, 3, 10}
     Camera()
-        : m_position({3, 2, 0}), m_up({0, 1, 0}), m_pitch(-25), m_yaw(-170), m_movement_speed(6),
-          m_faster_factor(2), m_sensitivity(0.2) {
+        : m_position({3, 2, 5}), m_direction(normalize({-0.5, -0.2, -1})), m_up({0, 1, 0}),
+          m_movement_speed(6), m_faster_factor(2), m_sensitivity(0.2) {
         m_projection = perspective(0.1, 100.0, 0.05, 0.05 * 0.5625); // Use window size ratio
 
-        update_direction();
         update_view_matrix();
     }
 
@@ -24,9 +23,11 @@ class Camera {
 
     void rotate_direction(float dx, float dy);
 
+    void rotate_around(Vec3 p, float dx, float dy);
+
     Vec3 position() const { return m_position; }
 
-    Vec3 direction() const {return m_direction; }
+    Vec3 direction() const { return m_direction; }
 
     Matrix projection() const { return m_projection; }
 
@@ -35,17 +36,13 @@ class Camera {
   private:
     void update_view_matrix();
 
-    void update_direction();
-
     Vec3 m_position;
     Vec3 m_direction;
     Vec3 m_up;
-    float m_pitch;
-    float m_yaw;
     Matrix m_view;
     Matrix m_projection;
+
     float m_movement_speed;
     float m_faster_factor;
-
     float m_sensitivity;
 };

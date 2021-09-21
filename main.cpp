@@ -52,6 +52,7 @@ struct CameraControls {
     bool move_up;
     bool move_down;
     bool move_faster;
+    bool move_around;
 };
 
 struct RenderControls {
@@ -161,6 +162,12 @@ Mesh octa_mesh(Vec3 top, Vec3 bottom, Vec3 front, Vec3 back, Vec3 left, Vec3 rig
                      right, bottom, left,  back, bottom, front, left,   bottom};
     mesh.normals = compute_normals(mesh.vertices);
     return mesh;
+}
+
+Vec3 face_centroid(Mesh mesh, int face_index) {
+    return (mesh.vertices[face_index * 3] + mesh.vertices[face_index * 3 + 1] +
+            mesh.vertices[face_index * 3 + 2]) /
+           3.f;
 }
 
 Mesh octa_from_face(Vec3 front, Vec3 top, Vec3 left) {
@@ -382,6 +389,8 @@ void update(Camera &camera, const CameraControls &controls, float dt) {
     }
 
     camera.set_position(camera.position() + velocity * dt);
+
+    mouse_pick();
 }
 
 void update(float dt) { update(camera, camera_controls, dt); }
@@ -503,6 +512,14 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         }
     }
 
+    if (key == GLFW_KEY_LEFT_CONTROL) {
+        if (action == GLFW_PRESS) {
+            camera_controls.move_around = true;
+        } else if (action == GLFW_RELEASE) {
+            camera_controls.move_around = false;
+        }
+    }
+
     if (key == GLFW_KEY_BACKSLASH && action == GLFW_PRESS) {
         render_controls.wireframe = !render_controls.wireframe;
         if (render_controls.wireframe) {
@@ -554,9 +571,24 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
     mouse.x = xpos;
     mouse.y = ypos;
 
-    camera.rotate_direction(rx, ry);
+    if (camera_controls.move_around) {
+        if (world.selected.target_index != -1) {
+            camera.rotate_around(face_centroid(world.tetraoctas[world.selected.target_index].mesh,
+                                               world.selected.face_index),
+                                 -rx, -ry);
+        }
+    } else {
+        camera.rotate_direction(rx, ry);
+    }
     mouse_pick();
 }
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    log(xoffset);
+    log(yoffset);
+}
+
 
 int main(int argc, char **argv) {
     GLFWwindow *window;
@@ -576,6 +608,7 @@ int main(int argc, char **argv) {
 
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     glewInit();
     init();

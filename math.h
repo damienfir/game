@@ -72,6 +72,8 @@ Matrix transpose(const Matrix &A);
 
 float radians(float deg);
 
+float degrees(float rad);
+
 Matrix scale(const Matrix &A, float factor);
 
 Matrix rotate_y(const Matrix& A, float deg);
