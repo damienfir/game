@@ -52,8 +52,6 @@ struct CameraControls {
     bool move_up;
     bool move_down;
     bool move_faster;
-    float rotation_x;
-    float rotation_y;
 };
 
 struct RenderControls {
@@ -144,9 +142,9 @@ Octa make_octa() {
                        back,  front,  top,   left, right,  front, bottom, back,
                        right, bottom, left,  back, bottom, front, left,   bottom};
     o.mesh.normals = compute_normals(o.mesh.vertices);
-    for (Vec3 &v : o.mesh.vertices) {
-        v *= 2.f / std::sqrt(2.f);
-    }
+    //    for (Vec3 &v : o.mesh.vertices) {
+    //        v *= 2.f / std::sqrt(2.f);
+    //    }
 
     o.obj.transform = eye();
     o.obj.color = {0.3, 0.4, 0.3};
@@ -155,17 +153,23 @@ Octa make_octa() {
     return o;
 }
 
-Tetra tetra_from_octa_face(const Octa& octa, int face) {
-    Vec3 a = octa.mesh.vertices[face*3];
-    Vec3 b = octa.mesh.vertices[face*3+1];
-    Vec3 c = octa.mesh.vertices[face*3+2];
+Tetra tetra_from_octa_face(const Octa &octa, int face) {
+    Vec3 a = octa.mesh.vertices[face * 3];
+    Vec3 b = octa.mesh.vertices[face * 3 + 1];
+    Vec3 c = octa.mesh.vertices[face * 3 + 2];
     return make_tetra(tetra_from_face(a, b, c));
 }
+
+struct SelectedFace {
+    int target_index = -1;
+    int face_index;
+};
 
 struct World {
     std::vector<Rectangle> rectangles;
     std::vector<Tetra> tetras;
     std::vector<Octa> octas;
+    SelectedFace selected;
 };
 
 World world;
@@ -200,8 +204,12 @@ void display() {
         draw(rect.rendering, rect.obj, camera);
     }
 
-    for (const auto &tetra : world.tetras) {
-        draw(tetra.rendering, tetra.obj, camera);
+    for (int i = 0; i < world.tetras.size(); ++i) {
+        auto obj = world.tetras[i].obj;
+        if (i == world.selected.target_index) {
+            obj.color = {1, 1, 1};
+        }
+        draw(world.tetras[i].rendering, obj, camera);
     }
 
     for (const auto &octa : world.octas) {
@@ -255,6 +263,62 @@ IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
     return d;
 }
 
+struct Ray {
+    Vec3 origin;
+    Vec3 direction;
+};
+
+SelectedFace find_selected_face(const Ray &ray) {
+    // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
+    SelectedFace selected;
+    float min_t = std::numeric_limits<float>::max();
+    for (int i = 0; i < world.tetras.size(); ++i) {
+        Mesh mesh = world.tetras[i].mesh;
+        for (int face_index = 0; face_index < 4; ++face_index) {
+            Vec3 normal = mesh.normals[face_index * 3];
+            if (dot(normal, ray.direction) >= 0) {
+                // triangle is facing away from ray
+                continue;
+            }
+
+            Vec3 v0 = mesh.vertices[face_index * 3];
+            Vec3 v1 = mesh.vertices[face_index * 3 + 1];
+            Vec3 v2 = mesh.vertices[face_index * 3 + 2];
+
+            auto plane_distance = dot(normal, v0);
+            float t = -(dot(normal, ray.origin) - plane_distance) / dot(normal, ray.direction);
+            if (t <= 0) {
+                // triangle is behind the ray
+                continue;
+            }
+
+            Vec3 point_intersect = ray.origin + ray.direction * t;
+            Vec3 e0 = v1 - v0;
+            Vec3 e1 = v2 - v1;
+            Vec3 e2 = v0 - v2;
+            Vec3 c0 = point_intersect - v0;
+            Vec3 c1 = point_intersect - v1;
+            Vec3 c2 = point_intersect - v2;
+            if (dot(normal, cross(e0, c0)) > 0 && dot(normal, cross(e1, c1)) > 0 &&
+                dot(normal, cross(e2, c2)) > 0) {
+                // point is inside the triangle
+                if (t < min_t) {
+                    min_t = t;
+                    selected.target_index = i;
+                    selected.face_index = face_index;
+                }
+            }
+        }
+    }
+
+    return selected;
+}
+
+void mouse_pick() {
+    Ray ray = {.origin = camera.position(), .direction = camera.direction()};
+    world.selected = find_selected_face(ray);
+}
+
 void update(Camera &camera, const CameraControls &controls, float dt) {
     Vec3 velocity;
 
@@ -289,17 +353,9 @@ void update(Camera &camera, const CameraControls &controls, float dt) {
     }
 
     camera.set_position(camera.position() + velocity * dt);
-
-    if (controls.rotation_x != 0 || controls.rotation_y != 0) {
-        camera.rotate_direction(controls.rotation_x, controls.rotation_y);
-    }
 }
 
-void update(float dt) {
-    update(camera, camera_controls, dt);
-    camera_controls.rotation_x = 0;
-    camera_controls.rotation_y = 0;
-}
+void update(float dt) { update(camera, camera_controls, dt); }
 
 void init() {
     //    buffers = {make_surface(10, 10)};
@@ -322,19 +378,28 @@ void init() {
     //    auto cube = make_cube(5);
     //    world.rectangles.push_back({cube});
 
-//    world.tetras = {make_tetra()};
+    //    world.tetras = {make_tetra()};
     world.octas = {make_octa()};
-    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 0));
-    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 1));
-    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 2));
-    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 3));
-    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 4));
-    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 5));
-    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 6));
-    world.tetras.push_back(tetra_from_octa_face(world.octas[0], 7));
-
+s
     axes = make_axes();
     glEnable(GL_DEPTH_TEST);
+}
+
+enum ObjectType { Tetrahedron, Octahedron };
+
+void add_to_selected_face(ObjectType type) {
+    if (world.selected.target_index >= 0) {
+        int face_index = world.selected.face_index;
+        Tetra tetra = world.tetras[world.selected.target_index];
+        Vec3 v0 = tetra.mesh.vertices[face_index * 3];
+        Vec3 v1 = tetra.mesh.vertices[face_index * 3 + 1];
+        Vec3 v2 = tetra.mesh.vertices[face_index * 3 + 2];
+        if (type == ObjectType::Tetrahedron) {
+            world.tetras.push_back(make_tetra(tetra_from_face(v0, v1, v2)));
+        } else if (type == ObjectType::Octahedron) {
+            //            world.octas.push_back(make_octa(octa_from_face(v0, v1, v2)));
+        }
+    }
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -416,6 +481,14 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_X && action == GLFW_PRESS) {
         render_controls.draw_axes = !render_controls.draw_axes;
     }
+
+    if (key == GLFW_KEY_T && action == GLFW_PRESS) {
+        add_to_selected_face(ObjectType::Tetrahedron);
+    }
+
+    if (key == GLFW_KEY_O && action == GLFW_PRESS) {
+        add_to_selected_face(ObjectType::Octahedron);
+    }
 }
 
 struct Mouse {
@@ -423,8 +496,8 @@ struct Mouse {
     int y;
     bool already_moved = false;
 };
-
 Mouse mouse;
+
 Timer mouse_throttle;
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
@@ -438,10 +511,13 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
         mouse.y = ypos;
     }
 
-    camera_controls.rotation_x = xpos - mouse.x;
-    camera_controls.rotation_y = mouse.y - ypos;
+    float rx = xpos - mouse.x;
+    float ry = mouse.y - ypos;
     mouse.x = xpos;
     mouse.y = ypos;
+
+    camera.rotate_direction(rx, ry);
+    mouse_pick();
 }
 
 int main(int argc, char **argv) {
