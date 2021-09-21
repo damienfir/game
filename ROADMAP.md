@@ -14,3 +14,7 @@ Mesh
 
 Engine
 - FPS counter on screen
+
+
+Geometry
+- use spatial transformation to add octa/tetra to existing face instead of recreating a whole new object

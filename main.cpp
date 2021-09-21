@@ -77,6 +77,12 @@ struct Octa {
     BasicRenderingBuffer rendering;
 };
 
+struct TetraOcta {
+    Mesh mesh;
+    SolidObjectProperties obj;
+    BasicRenderingBuffer rendering;
+};
+
 Vec3 normal_for_face(Vec3 a, Vec3 b, Vec3 c) {
     Vec3 v = b - a;
     Vec3 w = c - a;
@@ -104,11 +110,21 @@ Mesh tetra_mesh(Vec3 v0, Vec3 v1, Vec3 v2, Vec3 v3) {
     return mesh;
 }
 
+Vec3 centroid(const std::vector<Vec3> &points) {
+    Vec3 c = {0, 0, 0};
+    float n = points.size();
+    for (const Vec3 &p : points) {
+        c += p / n;
+    }
+    return c;
+}
+
 Mesh tetra_from_face(Vec3 a, Vec3 b, Vec3 c) {
     Vec3 n = normal_for_face(a, b, c);
     Vec3 center = (a + b + c) / 3.f;
-    Vec3 d = center + n * norm((c + (a - c) / 2.f - b));
-
+    float edge_length = norm(c - a);
+    float height = edge_length * std::sqrt(6.f) / 3.f;
+    Vec3 d = center + n * height;
     return tetra_mesh(a, c, b, d);
 }
 
@@ -121,15 +137,45 @@ Tetra make_tetra(Mesh mesh) {
     return t;
 }
 
-Tetra make_tetra() {
+TetraOcta make_tetra_or_octa(Mesh mesh) {
+    TetraOcta obj;
+    obj.mesh = mesh;
+    obj.obj.transform = eye();
+    obj.obj.color = {0.3, 0.3, 0.4};
+    obj.rendering = init_rendering(obj.mesh);
+    return obj;
+}
+
+TetraOcta make_tetra() {
     Vec3 v0 = {1, 0, -1 / std::sqrt(2.f)};
     Vec3 v1 = {-1, 0, -1 / std::sqrt(2.f)};
     Vec3 v2 = {0, 1, 1 / std::sqrt(2.f)};
     Vec3 v3 = {0, -1, 1 / std::sqrt(2.f)};
-    return make_tetra(tetra_from_face(v0, v1, v2));
+    return make_tetra_or_octa(tetra_from_face(v0, v1, v2));
 }
 
-Octa make_octa() {
+Mesh octa_mesh(Vec3 top, Vec3 bottom, Vec3 front, Vec3 back, Vec3 left, Vec3 right) {
+    Mesh mesh;
+    mesh.vertices = {right, top,    front, back, top,    right, left,   top,
+                     back,  front,  top,   left, right,  front, bottom, back,
+                     right, bottom, left,  back, bottom, front, left,   bottom};
+    mesh.normals = compute_normals(mesh.vertices);
+    return mesh;
+}
+
+Mesh octa_from_face(Vec3 front, Vec3 top, Vec3 left) {
+    Vec3 n = normal_for_face(front, top, left);
+    float side_length = norm(left - front);
+    float inscribed_sphere_radius = side_length * std::sqrt(6.f) / 6.f;
+    Vec3 face_center = (front + top + left) / 3.f;
+    Vec3 center = face_center - n * inscribed_sphere_radius;
+    Vec3 bottom = center - (top - center);
+    Vec3 back = center - (front - center);
+    Vec3 right = center - (left - center);
+    return octa_mesh(top, bottom, front, back, left, right);
+}
+
+TetraOcta make_octa() {
     Vec3 top = {0, 1, 0};
     Vec3 bottom = {0, -1, 0};
     Vec3 front = {0, 0, 1};
@@ -137,27 +183,14 @@ Octa make_octa() {
     Vec3 left = {-1, 0, 0};
     Vec3 right = {1, 0, 0};
 
-    Octa o;
-    o.mesh.vertices = {right, top,    front, back, top,    right, left,   top,
-                       back,  front,  top,   left, right,  front, bottom, back,
-                       right, bottom, left,  back, bottom, front, left,   bottom};
-    o.mesh.normals = compute_normals(o.mesh.vertices);
-    //    for (Vec3 &v : o.mesh.vertices) {
-    //        v *= 2.f / std::sqrt(2.f);
-    //    }
-
-    o.obj.transform = eye();
-    o.obj.color = {0.3, 0.4, 0.3};
-    o.rendering = init_rendering(o.mesh);
-
-    return o;
+    return make_tetra_or_octa(octa_mesh(top, bottom, front, back, left, right));
 }
 
-Tetra tetra_from_octa_face(const Octa &octa, int face) {
+TetraOcta tetra_from_octa_face(const TetraOcta &octa, int face) {
     Vec3 a = octa.mesh.vertices[face * 3];
     Vec3 b = octa.mesh.vertices[face * 3 + 1];
     Vec3 c = octa.mesh.vertices[face * 3 + 2];
-    return make_tetra(tetra_from_face(a, b, c));
+    return make_tetra_or_octa(tetra_from_face(a, b, c));
 }
 
 struct SelectedFace {
@@ -167,8 +200,7 @@ struct SelectedFace {
 
 struct World {
     std::vector<Rectangle> rectangles;
-    std::vector<Tetra> tetras;
-    std::vector<Octa> octas;
+    std::vector<TetraOcta> tetraoctas;
     SelectedFace selected;
 };
 
@@ -204,16 +236,12 @@ void display() {
         draw(rect.rendering, rect.obj, camera);
     }
 
-    for (int i = 0; i < world.tetras.size(); ++i) {
-        auto obj = world.tetras[i].obj;
+    for (int i = 0; i < world.tetraoctas.size(); ++i) {
+        auto obj = world.tetraoctas[i].obj;
         if (i == world.selected.target_index) {
             obj.color = {1, 1, 1};
         }
-        draw(world.tetras[i].rendering, obj, camera);
-    }
-
-    for (const auto &octa : world.octas) {
-        draw(octa.rendering, octa.obj, camera);
+        draw(world.tetraoctas[i].rendering, obj, camera);
     }
 }
 
@@ -272,9 +300,10 @@ SelectedFace find_selected_face(const Ray &ray) {
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
     SelectedFace selected;
     float min_t = std::numeric_limits<float>::max();
-    for (int i = 0; i < world.tetras.size(); ++i) {
-        Mesh mesh = world.tetras[i].mesh;
-        for (int face_index = 0; face_index < 4; ++face_index) {
+    for (int i = 0; i < world.tetraoctas.size(); ++i) {
+        Mesh mesh = world.tetraoctas[i].mesh;
+        int n_faces = mesh.vertices.size() / 3.f;
+        for (int face_index = 0; face_index < n_faces; ++face_index) {
             Vec3 normal = mesh.normals[face_index * 3];
             if (dot(normal, ray.direction) >= 0) {
                 // triangle is facing away from ray
@@ -378,9 +407,8 @@ void init() {
     //    auto cube = make_cube(5);
     //    world.rectangles.push_back({cube});
 
-    //    world.tetras = {make_tetra()};
-    world.octas = {make_octa()};
-s
+    world.tetraoctas = {make_tetra()};
+    //    world.tetraoctas = {make_octa()};
     axes = make_axes();
     glEnable(GL_DEPTH_TEST);
 }
@@ -390,15 +418,21 @@ enum ObjectType { Tetrahedron, Octahedron };
 void add_to_selected_face(ObjectType type) {
     if (world.selected.target_index >= 0) {
         int face_index = world.selected.face_index;
-        Tetra tetra = world.tetras[world.selected.target_index];
-        Vec3 v0 = tetra.mesh.vertices[face_index * 3];
-        Vec3 v1 = tetra.mesh.vertices[face_index * 3 + 1];
-        Vec3 v2 = tetra.mesh.vertices[face_index * 3 + 2];
-        if (type == ObjectType::Tetrahedron) {
-            world.tetras.push_back(make_tetra(tetra_from_face(v0, v1, v2)));
-        } else if (type == ObjectType::Octahedron) {
-            //            world.octas.push_back(make_octa(octa_from_face(v0, v1, v2)));
-        }
+        TetraOcta obj = world.tetraoctas[world.selected.target_index];
+        Vec3 v0 = obj.mesh.vertices[face_index * 3];
+        Vec3 v1 = obj.mesh.vertices[face_index * 3 + 1];
+        Vec3 v2 = obj.mesh.vertices[face_index * 3 + 2];
+        Mesh mesh = type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2)
+                                                    : octa_from_face(v0, v2, v1);
+
+        world.tetraoctas.push_back(make_tetra_or_octa(mesh));
+    }
+}
+
+void remove_selected_object() {
+    if (world.selected.target_index >= 0 && world.tetraoctas.size() > 1) {
+        world.tetraoctas.erase(std::begin(world.tetraoctas) + world.selected.target_index);
+        world.selected.target_index = -1;
     }
 }
 
@@ -478,7 +512,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         }
     }
 
-    if (key == GLFW_KEY_X && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_SLASH && action == GLFW_PRESS) {
         render_controls.draw_axes = !render_controls.draw_axes;
     }
 
@@ -488,6 +522,10 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_O && action == GLFW_PRESS) {
         add_to_selected_face(ObjectType::Octahedron);
+    }
+
+    if (key == GLFW_KEY_X && action == GLFW_PRESS) {
+        remove_selected_object();
     }
 }
 
