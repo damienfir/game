@@ -446,22 +446,22 @@ int add_object(TetraOcta object) {
 
 void remove_object(int index) { world.tetraoctas.erase(std::begin(world.tetraoctas) + index); }
 
-struct AddAction {
+struct AddObjectAction {
     TetraOcta object;
     int index{-1};
 };
 
-using ActionType = std::variant<AddAction>;
+using ActionType = std::variant<AddObjectAction>;
 
 struct ActionApplyVisitor {
-    void operator()(AddAction &action) {
+    void operator()(AddObjectAction &action) {
         log("apply");
         action.index = add_object(action.object);
     }
 };
 
 struct ActionUndoVisitor {
-    void operator()(AddAction &action) { remove_object(action.index); }
+    void operator()(AddObjectAction &action) { remove_object(action.index); }
 };
 
 class ActionSystem {
@@ -661,6 +661,7 @@ struct Mouse {
     int y;
     bool already_moved = false;
 };
+
 Mouse mouse;
 
 Timer mouse_throttle;
