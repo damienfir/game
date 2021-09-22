@@ -19,7 +19,5 @@ Geometry
 Editor
 - Move selected objects as whole
   - Selected objects are groups of polyhedra
-- Make scroll wheel work
 - Change color of object/polyhedra
-- Select by face visually, one color per face
 - Undo/redo

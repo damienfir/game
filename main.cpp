@@ -54,6 +54,8 @@ struct CameraControls {
     bool move_down;
     bool move_faster;
     bool move_around;
+    float dx;
+    float dy;
 };
 
 struct RenderControls {
@@ -359,9 +361,9 @@ void update(Camera &camera, const CameraControls &controls, float dt) {
     }
 
     if (controls.move_backwards) {
-        velocity -= camera.move_towards();
+        velocity -= controls.move_around ? camera.move_towards() : camera.move_towards_restricted();
     } else if (controls.move_forward) {
-        velocity += camera.move_towards();
+        velocity += controls.move_around ? camera.move_towards() : camera.move_towards_restricted();
     }
 
     if (controls.move_up) {
@@ -383,6 +385,22 @@ void update(Camera &camera, const CameraControls &controls, float dt) {
     }
 
     camera.set_position(camera.position() + velocity * dt);
+
+    if (camera_controls.move_around) {
+        if (world.selected.target_index != -1) {
+            camera.rotate_around(face_centroid(world.tetraoctas[world.selected.target_index].mesh,
+                                               world.selected.face_index),
+                                 -camera_controls.dx, -camera_controls.dy);
+        }
+    } else {
+        camera.rotate_direction(camera_controls.dx, camera_controls.dy);
+    }
+    camera_controls.dx = 0;
+    camera_controls.dy = 0;
+
+    if (!camera_controls.move_around) {
+        mouse_pick();
+    }
 }
 
 void update(float dt) { update(camera, camera_controls, dt); }
@@ -558,29 +576,10 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
         mouse.y = ypos;
     }
 
-    float rx = xpos - mouse.x;
-    float ry = mouse.y - ypos;
+    camera_controls.dx = xpos - mouse.x;
+    camera_controls.dy = mouse.y - ypos;
     mouse.x = xpos;
     mouse.y = ypos;
-
-    if (camera_controls.move_around) {
-        if (world.selected.target_index != -1) {
-            camera.rotate_around(face_centroid(world.tetraoctas[world.selected.target_index].mesh,
-                                               world.selected.face_index),
-                                 -rx, -ry);
-        }
-    } else {
-        camera.rotate_direction(rx, ry);
-    }
-
-    if (!camera_controls.move_around) {
-        mouse_pick();
-    }
-}
-
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-    log(xoffset);
-    log(yoffset);
 }
 
 int main(int argc, char **argv) {
@@ -601,7 +600,6 @@ int main(int argc, char **argv) {
 
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSetScrollCallback(window, scroll_callback);
 
     glewInit();
     init();

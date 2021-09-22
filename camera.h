@@ -13,6 +13,8 @@ class Camera {
 
     Vec3 move_vertical() const;
 
+    Vec3 move_towards_restricted() const;
+
     Vec3 move_towards() const;
 
     void rotate_direction(float dx, float dy);

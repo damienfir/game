@@ -21,9 +21,13 @@ Vec3 Camera::move_horizontal() const {
 
 Vec3 Camera::move_vertical() const { return m_up * m_movement_speed; }
 
-Vec3 Camera::move_towards() const {
+Vec3 Camera::move_towards_restricted() const {
     Vec3 horizontal_dir = {m_direction.x, 0, m_direction.z};
     return normalize(horizontal_dir) * m_movement_speed;
+}
+
+Vec3 Camera::move_towards() const {
+    return m_direction * m_movement_speed;
 }
 
 void Camera::rotate_direction(float dx, float dy) {
