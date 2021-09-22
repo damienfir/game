@@ -6,6 +6,7 @@
 #include <cmath>
 #include <optional>
 #include <utility>
+#include <variant>
 
 #include "buffer.h"
 #include "logging.h"
@@ -346,9 +347,13 @@ SelectedFace find_selected_face(const Ray &ray) {
     return selected;
 }
 
+void select_face(SelectedFace selected) { world.selected = selected; }
+
+void unselected_face() { world.selected.target_index = -1; }
+
 void mouse_pick() {
     Ray ray = {.origin = camera.position(), .direction = camera.direction()};
-    world.selected = find_selected_face(ray);
+    select_face(find_selected_face(ray));
 }
 
 void update(Camera &camera, const CameraControls &controls, float dt) {
@@ -434,6 +439,92 @@ void init() {
 
 enum ObjectType { Tetrahedron, Octahedron };
 
+int add_object(TetraOcta object) {
+    world.tetraoctas.push_back(object);
+    return world.tetraoctas.size() - 1;
+}
+
+void remove_object(int index) { world.tetraoctas.erase(std::begin(world.tetraoctas) + index); }
+
+struct AddAction {
+    TetraOcta object;
+    int index{-1};
+};
+
+using ActionType = std::variant<AddAction>;
+
+struct ActionApplyVisitor {
+    void operator()(AddAction &action) {
+        log("apply");
+        action.index = add_object(action.object);
+    }
+};
+
+struct ActionUndoVisitor {
+    void operator()(AddAction &action) { remove_object(action.index); }
+};
+
+class ActionSystem {
+  public:
+    ActionSystem() : m_last_applied(-1) {}
+
+    void add(ActionType action) {
+        m_actions.resize(m_last_applied + 1);
+        m_actions.push_back(action);
+        //        show();
+    }
+
+    void apply_all_unapplied() {
+        for (int i = m_last_applied + 1; i < m_actions.size(); ++i) {
+            apply(i);
+        }
+        //        show();
+    }
+
+    void undo() {
+        if (m_last_applied >= 0) {
+            std::visit(ActionUndoVisitor{}, m_actions[m_last_applied]);
+            m_last_applied--;
+        }
+        //        show();
+    }
+
+    void redo() {
+        int size = m_actions.size(); // Needs to be declared otherwise won't work
+        if (m_last_applied < size - 1) {
+            apply(m_last_applied + 1);
+        }
+        //        show();
+    }
+
+  private:
+    void apply(int index) {
+        std::visit(ActionApplyVisitor{}, m_actions[index]);
+        m_last_applied = index;
+    }
+
+    void show() {
+        for (int i = 0; i < m_actions.size(); ++i) {
+            std::cout << "[" << ((m_last_applied == i) ? "*" : " ") << "] ";
+        }
+        std::cout << std::endl;
+    }
+
+    int m_last_applied;
+    std::vector<ActionType> m_actions;
+};
+
+ActionSystem action_system;
+
+void emit(ActionType action) {
+    action_system.add(action);
+    action_system.apply_all_unapplied();
+}
+
+void undo() { action_system.undo(); }
+
+void redo() { action_system.redo(); }
+
 void add_to_selected_face(ObjectType type) {
     if (world.selected.target_index >= 0) {
         int face_index = world.selected.face_index;
@@ -444,14 +535,15 @@ void add_to_selected_face(ObjectType type) {
         Mesh mesh = type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2)
                                                     : octa_from_face(v0, v2, v1);
 
-        world.tetraoctas.push_back(make_tetra_or_octa(mesh));
+        emit(AddAction{.object = make_tetra_or_octa(mesh)});
+        unselected_face();
     }
 }
 
 void remove_selected_object() {
     if (world.selected.target_index >= 0 && world.tetraoctas.size() > 1) {
-        world.tetraoctas.erase(std::begin(world.tetraoctas) + world.selected.target_index);
-        world.selected.target_index = -1;
+        remove_object(world.selected.target_index);
+        unselected_face();
     }
 }
 
@@ -553,6 +645,14 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_X && action == GLFW_PRESS) {
         remove_selected_object();
+    }
+
+    if (key == GLFW_KEY_LEFT_BRACKET && action == GLFW_PRESS) {
+        undo();
+    }
+
+    if (key == GLFW_KEY_RIGHT_BRACKET && action == GLFW_PRESS) {
+        redo();
     }
 }
 

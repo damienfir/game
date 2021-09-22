@@ -10,3 +10,9 @@
 
 Because they are two primitive shapes that can tessellate when combined. A cube can do that too, but it is boring and
 overdone. Also, since I am a programmer and a lousy designer, it allows me to build interesting objects easily.
+
+# Why data-oriented ?
+
+1. It is much easier to reason about a program if we think of how algorithms manipulate data. When using OOP, we have to
+   think about behaviors (which behavior gets called when this happens ?). It is also much easier to visualize what is
+   happening by printing the data in some way.
