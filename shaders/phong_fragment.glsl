@@ -3,9 +3,11 @@
 
 uniform vec3 color;
 uniform vec3 viewer_pos;
+uniform int highlighted_face;
 
 in vec3 normal;
 in vec3 pos;
+flat in int face_index;
 
 out vec4 FragColor;
 
@@ -32,7 +34,10 @@ void main(void) {
     vec3 diffuse = 0.7 * diff * light_color;
     vec3 specular = 0.2 * spec * light_color;
 
-//    float noise = rand(pos.xy) * 0.2;
-    FragColor = vec4((ambient + diffuse + specular) * color, 1.0);
-//        FragColor = vec4(1, 1, 1, 1);
+    //    float noise = rand(pos.xy) * 0.2;
+    if (highlighted_face == face_index) {
+        FragColor = vec4(vec3(0.8), 1);
+    } else {
+        FragColor = vec4((ambient + diffuse + specular) * color, 1.0);
+    }
 }

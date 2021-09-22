@@ -60,7 +60,7 @@ Shader compile(const std::string &vertex, const std::string &fragment) {
     return shader;
 }
 
-void use(const Shader &shader) { glUseProgram(shader.program); }
+// void use(const Shader &shader) { glUseProgram(shader.program); }
 
 void set_matrix4(const Shader &shader, const std::string &name, const Mat4 &matrix) {
     int loc = glGetUniformLocation(shader.program, name.c_str());
@@ -72,3 +72,12 @@ void set_vec3(const Shader &shader, const std::string &name, const Vec3 &vec) {
     float v[] = {vec.x, vec.y, vec.z};
     glUniform3fv(loc, 1, v);
 }
+
+void set_int(const Shader &shader, const std::string &name, int value) {
+    int loc = glGetUniformLocation(shader.program, name.c_str());
+    glUniform1i(loc, value);
+}
+
+UseShader::UseShader(unsigned int program) { glUseProgram(program); }
+
+UseShader::~UseShader() { glUseProgram(0); }

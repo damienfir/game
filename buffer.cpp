@@ -23,7 +23,7 @@ std::vector<float> pack_vertices_and_normals(const std::vector<Vec3> &vertices,
 }
 
 void draw(const Axis &axis, const Camera &camera) {
-    use(axis.shader);
+    UseShader use(axis.shader.program);
     glBindVertexArray(axis.VAO);
 
     set_matrix4(axis.shader, "view", camera.view());
@@ -38,7 +38,7 @@ void draw(const Axis &axis, const Camera &camera) {
 
 void draw(const BasicRenderingBuffer &buffer, const SolidObjectProperties &obj,
           const Camera &camera) {
-    use(buffer.shader);
+    UseShader use(buffer.shader.program);
     glBindVertexArray(buffer.VAO);
 
     set_matrix4(buffer.shader, "model", obj.transform);
@@ -46,6 +46,7 @@ void draw(const BasicRenderingBuffer &buffer, const SolidObjectProperties &obj,
     set_matrix4(buffer.shader, "projection", camera.projection());
     set_vec3(buffer.shader, "color", obj.color);
     set_vec3(buffer.shader, "viewer_pos", camera.position());
+    set_int(buffer.shader, "highlighted_face", obj.highlighted_face);
 
     glDrawArrays(GL_TRIANGLES, 0, buffer.n_vertices);
     glBindVertexArray(0);
@@ -122,6 +123,8 @@ BasicRenderingBuffer init_rendering(const Mesh &mesh) {
 
     glGenVertexArrays(1, &buffer.VAO);
     glGenBuffers(1, &buffer.VBO);
+    glGenBuffers(1, &buffer.VBO_face_indices);
+
     glBindVertexArray(buffer.VAO);
     glBindBuffer(GL_ARRAY_BUFFER, buffer.VBO);
     glBufferData(GL_ARRAY_BUFFER, byte_size(data), data.data(), GL_STATIC_DRAW);
@@ -129,6 +132,12 @@ BasicRenderingBuffer init_rendering(const Mesh &mesh) {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, buffer.VBO_face_indices);
+    glBufferData(GL_ARRAY_BUFFER, byte_size(mesh.face_indices), mesh.face_indices.data(),
+                 GL_STATIC_DRAW);
+    glVertexAttribIPointer(2, 1, GL_INT, 0, (void *)0);
+    glEnableVertexAttribArray(2);
 
     return buffer;
 }

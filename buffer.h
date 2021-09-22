@@ -16,6 +16,7 @@ struct Axis {
 struct BasicRenderingBuffer {
     unsigned int VAO{};
     unsigned int VBO{};
+    unsigned int VBO_face_indices{};
     Shader shader;
     int n_vertices{};
 };
@@ -23,11 +24,13 @@ struct BasicRenderingBuffer {
 struct SolidObjectProperties {
     Vec3 color;
     Mat4 transform;
+    int highlighted_face{-1};
 };
 
 struct Mesh {
     std::vector<Vec3> vertices;
     std::vector<Vec3> normals;
+    std::vector<int> face_indices;
 };
 
 struct Rectangle {

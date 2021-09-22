@@ -109,6 +109,7 @@ Mesh tetra_mesh(Vec3 v0, Vec3 v1, Vec3 v2, Vec3 v3) {
     Mesh mesh;
     mesh.vertices = {v0, v2, v3, v0, v1, v2, v0, v3, v1, v1, v3, v2};
     mesh.normals = compute_normals(mesh.vertices);
+    mesh.face_indices = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3};
     return mesh;
 }
 
@@ -143,6 +144,7 @@ Mesh octa_mesh(Vec3 top, Vec3 bottom, Vec3 front, Vec3 back, Vec3 left, Vec3 rig
                      back,  front,  top,   left, right,  front, bottom, back,
                      right, bottom, left,  back, bottom, front, left,   bottom};
     mesh.normals = compute_normals(mesh.vertices);
+    mesh.face_indices = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7};
     return mesh;
 }
 
@@ -213,6 +215,14 @@ void draw(Axes axes, const Camera &camera) {
     draw(axes.z_axis, camera);
 }
 
+void draw_middle_point() {
+    glPointSize(5);
+    glBegin(GL_POINTS);
+    glColor3d(1, 1, 1);
+    glVertex3d(0, 0, 0);
+    glEnd();
+}
+
 void display() {
     glClearColor(0.0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -226,12 +236,14 @@ void display() {
     }
 
     for (int i = 0; i < world.tetraoctas.size(); ++i) {
-        auto obj = world.tetraoctas[i].obj;
+        SolidObjectProperties obj = world.tetraoctas[i].obj;
         if (i == world.selected.target_index) {
-            obj.color = {1, 1, 1};
+            obj.highlighted_face = world.selected.face_index;
         }
         draw(world.tetraoctas[i].rendering, obj, camera);
     }
+
+    draw_middle_point();
 }
 
 struct IntersectData {

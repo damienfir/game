@@ -30,8 +30,8 @@ void Camera::rotate_direction(float dx, float dy) {
     // Works for small (dx, dy), otherwise use yaw/pitch system
     // I removed it because it was too much state to maintain and it had to be recomputed depending
     // on which rotation you are using
-    m_direction += normalize(cross(m_direction, m_up)) * dx * m_sensitivity * 0.02;
-    m_direction += m_up * dy * m_sensitivity * 0.02;
+    m_direction += normalize(cross(m_direction, m_up)) * dx * m_sensitivity * 0.015;
+    m_direction += m_up * dy * m_sensitivity * 0.015;
     m_direction = normalize(m_direction);
     update_view_matrix();
 }
