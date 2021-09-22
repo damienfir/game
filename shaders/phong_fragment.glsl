@@ -34,5 +34,5 @@ void main(void) {
 
 //    float noise = rand(pos.xy) * 0.2;
     FragColor = vec4((ambient + diffuse + specular) * color, 1.0);
-    //    FragColor = vec4(1, 1, 1, 1);
+//        FragColor = vec4(1, 1, 1, 1);
 }

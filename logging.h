@@ -1,6 +1,5 @@
 #pragma once
 
-#include <string>
 #include <iostream>
 #include <vector>
 
@@ -15,3 +14,7 @@ void log(const std::vector<T>& v) {
         log(v[i]);
     }
 }
+
+class Vec3;
+
+std::string string(const Vec3 &v);

@@ -1,20 +1,22 @@
 #include "shader.h"
-#include "math.h"
+
+#include "mat4.h"
+#include "vec3.h"
 
 #include <GL/glew.h>
-#include <string>
-#include <stdexcept>
 #include <fstream>
+#include <sstream>
+#include <stdexcept>
 
-std::string read_from_file(const std::filesystem::path &path) {
-    std::ifstream file(path.string());
+std::string read_from_file(const std::string &path) {
+    std::ifstream file(path);
     std::stringstream buffer;
     buffer << file.rdbuf();
     return buffer.str();
 }
 
-Shader compile(const std::filesystem::path &vertex, const std::filesystem::path &fragment) {
-    std::string vertex_source = read_from_file(vertex.string());
+Shader compile(const std::string &vertex, const std::string &fragment) {
+    std::string vertex_source = read_from_file(vertex);
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     auto source = vertex_source.c_str();
     glShaderSource(vertex_shader, 1, &source, NULL);
@@ -28,7 +30,7 @@ Shader compile(const std::filesystem::path &vertex, const std::filesystem::path 
         throw std::runtime_error(std::string("Vertex shader: ") + log);
     }
 
-    std::string fragment_source = read_from_file(fragment.string());
+    std::string fragment_source = read_from_file(fragment);
     source = fragment_source.c_str();
     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment_shader, 1, &source, NULL);
@@ -58,16 +60,14 @@ Shader compile(const std::filesystem::path &vertex, const std::filesystem::path 
     return shader;
 }
 
-void use(const Shader &shader) {
-    glUseProgram(shader.program);
-}
+void use(const Shader &shader) { glUseProgram(shader.program); }
 
-void set_matrix4(const Shader &shader, const std::string& name, const Matrix& matrix) {
+void set_matrix4(const Shader &shader, const std::string &name, const Mat4 &matrix) {
     int loc = glGetUniformLocation(shader.program, name.c_str());
     glUniformMatrix4fv(loc, 1, GL_TRUE, matrix.ptr());
 }
 
-void set_vec3(const Shader &shader, const std::string& name, const Vec3& vec) {
+void set_vec3(const Shader &shader, const std::string &name, const Vec3 &vec) {
     int loc = glGetUniformLocation(shader.program, name.c_str());
     float v[] = {vec.x, vec.y, vec.z};
     glUniform3fv(loc, 1, v);

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "camera.h"
-#include "math.h"
+#include "mat4.h"
 #include "shader.h"
 #include <GL/glew.h>
 
@@ -14,15 +14,15 @@ struct Axis {
 };
 
 struct BasicRenderingBuffer {
-    unsigned int VAO;
-    unsigned int VBO;
+    unsigned int VAO{};
+    unsigned int VBO{};
     Shader shader;
-    int n_vertices;
+    int n_vertices{};
 };
 
 struct SolidObjectProperties {
     Vec3 color;
-    Matrix transform;
+    Mat4 transform;
 };
 
 struct Mesh {

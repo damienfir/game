@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cmath>
 #include <optional>
+#include <utility>
 
 #include "buffer.h"
 #include "logging.h"
@@ -111,15 +112,6 @@ Mesh tetra_mesh(Vec3 v0, Vec3 v1, Vec3 v2, Vec3 v3) {
     return mesh;
 }
 
-Vec3 centroid(const std::vector<Vec3> &points) {
-    Vec3 c = {0, 0, 0};
-    float n = points.size();
-    for (const Vec3 &p : points) {
-        c += p / n;
-    }
-    return c;
-}
-
 Mesh tetra_from_face(Vec3 a, Vec3 b, Vec3 c) {
     Vec3 n = normal_for_face(a, b, c);
     Vec3 center = (a + b + c) / 3.f;
@@ -129,18 +121,9 @@ Mesh tetra_from_face(Vec3 a, Vec3 b, Vec3 c) {
     return tetra_mesh(a, c, b, d);
 }
 
-Tetra make_tetra(Mesh mesh) {
-    Tetra t;
-    t.mesh = mesh;
-    t.obj.transform = eye();
-    t.obj.color = {0.3, 0.3, 0.4};
-    t.rendering = init_rendering(t.mesh);
-    return t;
-}
-
 TetraOcta make_tetra_or_octa(Mesh mesh) {
     TetraOcta obj;
-    obj.mesh = mesh;
+    obj.mesh = std::move(mesh);
     obj.obj.transform = eye();
     obj.obj.color = {0.3, 0.3, 0.4};
     obj.rendering = init_rendering(obj.mesh);
@@ -151,7 +134,6 @@ TetraOcta make_tetra() {
     Vec3 v0 = {1, 0, -1 / std::sqrt(2.f)};
     Vec3 v1 = {-1, 0, -1 / std::sqrt(2.f)};
     Vec3 v2 = {0, 1, 1 / std::sqrt(2.f)};
-    Vec3 v3 = {0, -1, 1 / std::sqrt(2.f)};
     return make_tetra_or_octa(tetra_from_face(v0, v1, v2));
 }
 
