@@ -20,4 +20,3 @@ Editor
 - Move selected objects as whole
   - Selected objects are groups of polyhedra
 - Change color of object/polyhedra
-- Undo/redo

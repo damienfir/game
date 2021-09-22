@@ -446,22 +446,33 @@ int add_object(TetraOcta object) {
 
 void remove_object(int index) { world.tetraoctas.erase(std::begin(world.tetraoctas) + index); }
 
+// FIXME: use a better mechanism than changing the state of actions (in this case, to set the index
+// after adding the object)
 struct AddObjectAction {
     TetraOcta object;
+    std::optional<int> index;
+};
+
+struct RemoveObjectAction {
+    std::optional<TetraOcta> object;
     int index{-1};
 };
 
-using ActionType = std::variant<AddObjectAction>;
+using ActionType = std::variant<AddObjectAction, RemoveObjectAction>;
 
 struct ActionApplyVisitor {
-    void operator()(AddObjectAction &action) {
-        log("apply");
-        action.index = add_object(action.object);
+    void operator()(AddObjectAction &action) { action.index = add_object(action.object); }
+
+    void operator()(RemoveObjectAction &action) {
+        action.object = world.tetraoctas[action.index];
+        remove_object(action.index);
     }
 };
 
 struct ActionUndoVisitor {
-    void operator()(AddObjectAction &action) { remove_object(action.index); }
+    void operator()(AddObjectAction &action) { remove_object(*action.index); }
+
+    void operator()(RemoveObjectAction &action) { action.index = add_object(*action.object); }
 };
 
 class ActionSystem {
@@ -535,14 +546,14 @@ void add_to_selected_face(ObjectType type) {
         Mesh mesh = type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2)
                                                     : octa_from_face(v0, v2, v1);
 
-        emit(AddAction{.object = make_tetra_or_octa(mesh)});
+        emit(AddObjectAction{.object = make_tetra_or_octa(mesh)});
         unselected_face();
     }
 }
 
 void remove_selected_object() {
     if (world.selected.target_index >= 0 && world.tetraoctas.size() > 1) {
-        remove_object(world.selected.target_index);
+        emit(RemoveObjectAction{.index = world.selected.target_index});
         unselected_face();
     }
 }
