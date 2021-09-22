@@ -1,7 +1,6 @@
 #include "logging.h"
 
-#include "mat4.h"
-#include "vec3.h"
+#include "maths.h"
 
 std::string string(const Vec3 &v) {
     return std::to_string(v.x) + " " + std::to_string(v.y) + " " + std::to_string(v.z);

@@ -1,7 +1,6 @@
 #include "shader.h"
 
-#include "mat4.h"
-#include "vec3.h"
+#include "maths.h"
 
 #include <GL/glew.h>
 #include <fstream>

@@ -8,8 +8,11 @@
 #include <utility>
 #include <variant>
 
+#include "axes.h"
 #include "buffer.h"
 #include "logging.h"
+#include "mesh.h"
+#include "undoredo.h"
 
 class Timer {
   public:
@@ -64,66 +67,11 @@ struct RenderControls {
     bool draw_axes = true;
 };
 
-struct Axes {
-    Axis x_axis;
-    Axis y_axis;
-    Axis z_axis;
-};
-
-struct Tetra {
-    Mesh mesh;
-    SolidObjectProperties obj;
-    BasicRenderingBuffer rendering;
-};
-
-struct Octa {
-    Mesh mesh;
-    SolidObjectProperties obj;
-    BasicRenderingBuffer rendering;
-};
-
 struct TetraOcta {
     Mesh mesh;
     SolidObjectProperties obj;
     BasicRenderingBuffer rendering;
 };
-
-Vec3 normal_for_face(Vec3 a, Vec3 b, Vec3 c) {
-    Vec3 v = b - a;
-    Vec3 w = c - a;
-    Vec3 n = normalize(cross(v, w)); // verified correct order
-    return n;
-}
-
-std::vector<Vec3> compute_normals(const std::vector<Vec3> &vertices) {
-    // assuming the normals are packed by faces
-    std::vector<Vec3> normals;
-    normals.reserve(vertices.size());
-    for (int i = 0; i < vertices.size(); i += 3) {
-        Vec3 n = normal_for_face(vertices[i], vertices[i + 1], vertices[i + 2]);
-        normals.push_back(n);
-        normals.push_back(n);
-        normals.push_back(n);
-    }
-    return normals;
-}
-
-Mesh tetra_mesh(Vec3 v0, Vec3 v1, Vec3 v2, Vec3 v3) {
-    Mesh mesh;
-    mesh.vertices = {v0, v2, v3, v0, v1, v2, v0, v3, v1, v1, v3, v2};
-    mesh.normals = compute_normals(mesh.vertices);
-    mesh.face_indices = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3};
-    return mesh;
-}
-
-Mesh tetra_from_face(Vec3 a, Vec3 b, Vec3 c) {
-    Vec3 n = normal_for_face(a, b, c);
-    Vec3 center = (a + b + c) / 3.f;
-    float edge_length = norm(c - a);
-    float height = edge_length * std::sqrt(6.f) / 3.f;
-    Vec3 d = center + n * height;
-    return tetra_mesh(a, c, b, d);
-}
 
 TetraOcta make_tetra_or_octa(Mesh mesh) {
     TetraOcta obj;
@@ -141,44 +89,16 @@ TetraOcta make_tetra() {
     return make_tetra_or_octa(tetra_from_face(v0, v1, v2));
 }
 
-Mesh octa_mesh(Vec3 top, Vec3 bottom, Vec3 front, Vec3 back, Vec3 left, Vec3 right) {
-    Mesh mesh;
-    mesh.vertices = {right, top,    front, back, top,    right, left,   top,
-                     back,  front,  top,   left, right,  front, bottom, back,
-                     right, bottom, left,  back, bottom, front, left,   bottom};
-    mesh.normals = compute_normals(mesh.vertices);
-    mesh.face_indices = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7};
-    return mesh;
-}
-
-Vec3 face_centroid(Mesh mesh, int face_index) {
-    return (mesh.vertices[face_index * 3] + mesh.vertices[face_index * 3 + 1] +
-            mesh.vertices[face_index * 3 + 2]) /
-           3.f;
-}
-
-Mesh octa_from_face(Vec3 front, Vec3 top, Vec3 left) {
-    Vec3 n = normal_for_face(front, top, left);
-    float side_length = norm(left - front);
-    float inscribed_sphere_radius = side_length * std::sqrt(6.f) / 6.f;
-    Vec3 face_center = (front + top + left) / 3.f;
-    Vec3 center = face_center - n * inscribed_sphere_radius;
-    Vec3 bottom = center - (top - center);
-    Vec3 back = center - (front - center);
-    Vec3 right = center - (left - center);
-    return octa_mesh(top, bottom, front, back, left, right);
-}
-
-TetraOcta make_octa() {
-    Vec3 top = {0, 1, 0};
-    Vec3 bottom = {0, -1, 0};
-    Vec3 front = {0, 0, 1};
-    Vec3 back = {0, 0, -1};
-    Vec3 left = {-1, 0, 0};
-    Vec3 right = {1, 0, 0};
-
-    return make_tetra_or_octa(octa_mesh(top, bottom, front, back, left, right));
-}
+// TetraOcta make_octa() {
+//     Vec3 top = {0, 1, 0};
+//     Vec3 bottom = {0, -1, 0};
+//     Vec3 front = {0, 0, 1};
+//     Vec3 back = {0, 0, -1};
+//     Vec3 left = {-1, 0, 0};
+//     Vec3 right = {1, 0, 0};
+//
+//     return make_tetra_or_octa(octa_mesh(top, bottom, front, back, left, right));
+// }
 
 TetraOcta tetra_from_octa_face(const TetraOcta &octa, int face) {
     Vec3 a = octa.mesh.vertices[face * 3];
@@ -196,27 +116,13 @@ struct World {
     std::vector<Rectangle> rectangles;
     std::vector<TetraOcta> tetraoctas;
     SelectedFace selected;
+    Camera camera;
+    Axes axes;
+    CameraControls camera_controls;
+    RenderControls render_controls;
 };
 
 World world;
-Camera camera;
-Axes axes;
-CameraControls camera_controls;
-RenderControls render_controls;
-
-Axes make_axes() {
-    Axes a;
-    a.x_axis = make_axis(0);
-    a.y_axis = make_axis(1);
-    a.z_axis = make_axis(2);
-    return a;
-}
-
-void draw(Axes axes, const Camera &camera) {
-    draw(axes.x_axis, camera);
-    draw(axes.y_axis, camera);
-    draw(axes.z_axis, camera);
-}
 
 void draw_middle_point() {
     glPointSize(5);
@@ -230,12 +136,12 @@ void display() {
     glClearColor(0.0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    if (render_controls.draw_axes) {
-        draw(axes, camera);
+    if (world.render_controls.draw_axes) {
+        draw(world.axes, world.camera);
     }
 
     for (const auto &rect : world.rectangles) {
-        draw(rect.rendering, rect.obj, camera);
+        draw(rect.rendering, rect.obj, world.camera);
     }
 
     for (int i = 0; i < world.tetraoctas.size(); ++i) {
@@ -243,7 +149,7 @@ void display() {
         if (i == world.selected.target_index) {
             obj.highlighted_face = world.selected.face_index;
         }
-        draw(world.tetraoctas[i].rendering, obj, camera);
+        draw(world.tetraoctas[i].rendering, obj, world.camera);
     }
 
     draw_middle_point();
@@ -301,13 +207,13 @@ struct Ray {
 };
 
 SelectedFace find_selected_face(const Ray &ray) {
-    // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
     SelectedFace selected;
     float min_t = std::numeric_limits<float>::max();
     for (int i = 0; i < world.tetraoctas.size(); ++i) {
         Mesh mesh = world.tetraoctas[i].mesh;
         int n_faces = mesh.vertices.size() / 3.f;
         for (int face_index = 0; face_index < n_faces; ++face_index) {
+            // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
             Vec3 normal = mesh.normals[face_index * 3];
             if (dot(normal, ray.direction) >= 0) {
                 // triangle is facing away from ray
@@ -352,11 +258,11 @@ void select_face(SelectedFace selected) { world.selected = selected; }
 void unselected_face() { world.selected.target_index = -1; }
 
 void mouse_pick() {
-    Ray ray = {.origin = camera.position(), .direction = camera.direction()};
+    Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
     select_face(find_selected_face(ray));
 }
 
-void update(Camera &camera, const CameraControls &controls, float dt) {
+void update(Camera &camera, CameraControls &controls, float dt) {
     Vec3 velocity;
 
     if (controls.move_right) {
@@ -391,24 +297,24 @@ void update(Camera &camera, const CameraControls &controls, float dt) {
 
     camera.set_position(camera.position() + velocity * dt);
 
-    if (camera_controls.move_around) {
+    if (controls.move_around) {
         if (world.selected.target_index != -1) {
             camera.rotate_around(face_centroid(world.tetraoctas[world.selected.target_index].mesh,
                                                world.selected.face_index),
-                                 -camera_controls.dx, -camera_controls.dy);
+                                 -controls.dx, -controls.dy);
         }
     } else {
-        camera.rotate_direction(camera_controls.dx, camera_controls.dy);
+        camera.rotate_direction(controls.dx, controls.dy);
     }
-    camera_controls.dx = 0;
-    camera_controls.dy = 0;
+    controls.dx = 0;
+    controls.dy = 0;
 
-    if (!camera_controls.move_around) {
+    if (!controls.move_around) {
         mouse_pick();
     }
 }
 
-void update(float dt) { update(camera, camera_controls, dt); }
+void update(float dt) { update(world.camera, world.camera_controls, dt); }
 
 void init() {
     //    buffers = {make_surface(10, 10)};
@@ -433,7 +339,7 @@ void init() {
 
     world.tetraoctas = {make_tetra()};
     //    world.tetraoctas = {make_octa()};
-    axes = make_axes();
+    world.axes = make_axes();
     glEnable(GL_DEPTH_TEST);
 }
 
@@ -475,57 +381,7 @@ struct ActionUndoVisitor {
     void operator()(RemoveObjectAction &action) { action.index = add_object(*action.object); }
 };
 
-class ActionSystem {
-  public:
-    ActionSystem() : m_last_applied(-1) {}
-
-    void add(ActionType action) {
-        m_actions.resize(m_last_applied + 1);
-        m_actions.push_back(action);
-        //        show();
-    }
-
-    void apply_all_unapplied() {
-        for (int i = m_last_applied + 1; i < m_actions.size(); ++i) {
-            apply(i);
-        }
-        //        show();
-    }
-
-    void undo() {
-        if (m_last_applied >= 0) {
-            std::visit(ActionUndoVisitor{}, m_actions[m_last_applied]);
-            m_last_applied--;
-        }
-        //        show();
-    }
-
-    void redo() {
-        int size = m_actions.size(); // Needs to be declared otherwise won't work
-        if (m_last_applied < size - 1) {
-            apply(m_last_applied + 1);
-        }
-        //        show();
-    }
-
-  private:
-    void apply(int index) {
-        std::visit(ActionApplyVisitor{}, m_actions[index]);
-        m_last_applied = index;
-    }
-
-    void show() {
-        for (int i = 0; i < m_actions.size(); ++i) {
-            std::cout << "[" << ((m_last_applied == i) ? "*" : " ") << "] ";
-        }
-        std::cout << std::endl;
-    }
-
-    int m_last_applied;
-    std::vector<ActionType> m_actions;
-};
-
-ActionSystem action_system;
+UndoRedo<ActionType, ActionApplyVisitor, ActionUndoVisitor> action_system;
 
 void emit(ActionType action) {
     action_system.add(action);
@@ -565,77 +421,77 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_A) {
         if (action == GLFW_PRESS) {
-            camera_controls.move_right = false;
-            camera_controls.move_left = true;
+            world.camera_controls.move_right = false;
+            world.camera_controls.move_left = true;
         } else if (action == GLFW_RELEASE) {
-            camera_controls.move_left = false;
+            world.camera_controls.move_left = false;
         }
     }
 
     if (key == GLFW_KEY_D) {
         if (action == GLFW_PRESS) {
-            camera_controls.move_left = false;
-            camera_controls.move_right = true;
+            world.camera_controls.move_left = false;
+            world.camera_controls.move_right = true;
         } else if (action == GLFW_RELEASE) {
-            camera_controls.move_right = false;
+            world.camera_controls.move_right = false;
         }
     }
 
     if (key == GLFW_KEY_W) {
         if (action == GLFW_PRESS) {
-            camera_controls.move_backwards = false;
-            camera_controls.move_forward = true;
+            world.camera_controls.move_backwards = false;
+            world.camera_controls.move_forward = true;
         } else if (action == GLFW_RELEASE) {
-            camera_controls.move_forward = false;
+            world.camera_controls.move_forward = false;
         }
     }
 
     if (key == GLFW_KEY_S) {
         if (action == GLFW_PRESS) {
-            camera_controls.move_forward = false;
-            camera_controls.move_backwards = true;
+            world.camera_controls.move_forward = false;
+            world.camera_controls.move_backwards = true;
         } else if (action == GLFW_RELEASE) {
-            camera_controls.move_backwards = false;
+            world.camera_controls.move_backwards = false;
         }
     }
 
     if (key == GLFW_KEY_E) {
         if (action == GLFW_PRESS) {
-            camera_controls.move_down = false;
-            camera_controls.move_up = true;
+            world.camera_controls.move_down = false;
+            world.camera_controls.move_up = true;
         } else if (action == GLFW_RELEASE) {
-            camera_controls.move_up = false;
+            world.camera_controls.move_up = false;
         }
     }
 
     if (key == GLFW_KEY_Q) {
         if (action == GLFW_PRESS) {
-            camera_controls.move_up = false;
-            camera_controls.move_down = true;
+            world.camera_controls.move_up = false;
+            world.camera_controls.move_down = true;
         } else if (action == GLFW_RELEASE) {
-            camera_controls.move_down = false;
+            world.camera_controls.move_down = false;
         }
     }
 
     if (key == GLFW_KEY_LEFT_SHIFT) {
         if (action == GLFW_PRESS) {
-            camera_controls.move_faster = true;
+            world.camera_controls.move_faster = true;
         } else if (action == GLFW_RELEASE) {
-            camera_controls.move_faster = false;
+            world.camera_controls.move_faster = false;
         }
     }
 
     if (key == GLFW_KEY_LEFT_CONTROL) {
         if (action == GLFW_PRESS) {
-            camera_controls.move_around = true;
+            world.camera_controls.move_around = true;
         } else if (action == GLFW_RELEASE) {
-            camera_controls.move_around = false;
+            world.camera_controls.move_around = false;
         }
     }
 
     if (key == GLFW_KEY_BACKSLASH && action == GLFW_PRESS) {
-        render_controls.wireframe = !render_controls.wireframe;
-        if (render_controls.wireframe) {
+        world.render_controls.wireframe = !world.render_controls.wireframe;
+        if (world.render_controls.wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         } else {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -643,7 +499,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 
     if (key == GLFW_KEY_SLASH && action == GLFW_PRESS) {
-        render_controls.draw_axes = !render_controls.draw_axes;
+        world.render_controls.draw_axes = !world.render_controls.draw_axes;
     }
 
     if (key == GLFW_KEY_T && action == GLFW_PRESS) {
@@ -688,8 +544,8 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
         mouse.y = ypos;
     }
 
-    camera_controls.dx = xpos - mouse.x;
-    camera_controls.dy = mouse.y - ypos;
+    world.camera_controls.dx = xpos - mouse.x;
+    world.camera_controls.dy = mouse.y - ypos;
     mouse.x = xpos;
     mouse.y = ypos;
 }

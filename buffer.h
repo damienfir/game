@@ -1,17 +1,10 @@
 #pragma once
 
 #include "camera.h"
-#include "mat4.h"
+#include "maths.h"
+#include "mesh.h"
 #include "shader.h"
 #include <GL/glew.h>
-
-struct Axis {
-    unsigned int VAO;
-    unsigned int VBO;
-    Shader shader;
-    std::vector<Vec3> vertices;
-    Vec3 color;
-};
 
 struct BasicRenderingBuffer {
     unsigned int VAO{};
@@ -25,12 +18,6 @@ struct SolidObjectProperties {
     Vec3 color;
     Mat4 transform;
     int highlighted_face{-1};
-};
-
-struct Mesh {
-    std::vector<Vec3> vertices;
-    std::vector<Vec3> normals;
-    std::vector<int> face_indices;
 };
 
 struct Rectangle {
@@ -48,13 +35,9 @@ void draw(const BasicRenderingBuffer &buffer, const SolidObjectProperties &obj,
 
 BasicRenderingBuffer init_rendering(const Mesh &mesh);
 
-void draw(const Axis &axis, const Camera &camera);
-
 // void draw(const Rectangle &cube, const Camera &camera);
 
 // Buffer make_surface(int rows, int cols);
-
-Axis make_axis(int ax);
 
 Rectangle make_rectangle(float width, float height, float depth);
 
