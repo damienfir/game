@@ -2,6 +2,19 @@
 
 #include "maths.h"
 
+struct CameraControls {
+    bool move_left;
+    bool move_right;
+    bool move_forward;
+    bool move_backwards;
+    bool move_up;
+    bool move_down;
+    bool move_faster;
+    bool move_around;
+    float dx;
+    float dy;
+};
+
 class Camera {
   public:
     Camera();

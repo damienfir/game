@@ -4,15 +4,14 @@
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include <cmath>
-#include <optional>
 #include <utility>
-#include <variant>
 
 #include "axes.h"
 #include "buffer.h"
 #include "logging.h"
 #include "mesh.h"
-#include "undoredo.h"
+#include "objects.h"
+#include "world.h"
 
 class Timer {
   public:
@@ -49,81 +48,6 @@ class FPSCounter {
     float m_last_dt;
 };
 
-struct CameraControls {
-    bool move_left;
-    bool move_right;
-    bool move_forward;
-    bool move_backwards;
-    bool move_up;
-    bool move_down;
-    bool move_faster;
-    bool move_around;
-    float dx;
-    float dy;
-};
-
-struct RenderControls {
-    bool wireframe = false;
-    bool draw_axes = true;
-};
-
-struct TetraOcta {
-    Mesh mesh;
-    SolidObjectProperties obj;
-    BasicRenderingBuffer rendering;
-};
-
-TetraOcta make_tetra_or_octa(Mesh mesh) {
-    TetraOcta obj;
-    obj.mesh = std::move(mesh);
-    obj.obj.transform = eye();
-    obj.obj.color = {0.3, 0.3, 0.4};
-    obj.rendering = init_rendering(obj.mesh);
-    return obj;
-}
-
-TetraOcta make_tetra() {
-    Vec3 v0 = {1, 0, -1 / std::sqrt(2.f)};
-    Vec3 v1 = {-1, 0, -1 / std::sqrt(2.f)};
-    Vec3 v2 = {0, 1, 1 / std::sqrt(2.f)};
-    return make_tetra_or_octa(tetra_from_face(v0, v1, v2));
-}
-
-// TetraOcta make_octa() {
-//     Vec3 top = {0, 1, 0};
-//     Vec3 bottom = {0, -1, 0};
-//     Vec3 front = {0, 0, 1};
-//     Vec3 back = {0, 0, -1};
-//     Vec3 left = {-1, 0, 0};
-//     Vec3 right = {1, 0, 0};
-//
-//     return make_tetra_or_octa(octa_mesh(top, bottom, front, back, left, right));
-// }
-
-TetraOcta tetra_from_octa_face(const TetraOcta &octa, int face) {
-    Vec3 a = octa.mesh.vertices[face * 3];
-    Vec3 b = octa.mesh.vertices[face * 3 + 1];
-    Vec3 c = octa.mesh.vertices[face * 3 + 2];
-    return make_tetra_or_octa(tetra_from_face(a, b, c));
-}
-
-struct SelectedFace {
-    int target_index = -1;
-    int face_index;
-};
-
-struct World {
-    std::vector<Rectangle> rectangles;
-    std::vector<TetraOcta> tetraoctas;
-    SelectedFace selected;
-    Camera camera;
-    Axes axes;
-    CameraControls camera_controls;
-    RenderControls render_controls;
-};
-
-World world;
-
 void draw_middle_point() {
     glPointSize(5);
     glBegin(GL_POINTS);
@@ -140,9 +64,9 @@ void display() {
         draw(world.axes, world.camera);
     }
 
-    for (const auto &rect : world.rectangles) {
-        draw(rect.rendering, rect.obj, world.camera);
-    }
+    //    for (const auto &rect : world.rectangles) {
+    //        draw(rect.rendering, rect.obj, world.camera);
+    //    }
 
     for (int i = 0; i < world.tetraoctas.size(); ++i) {
         SolidObjectProperties obj = world.tetraoctas[i].obj;
@@ -201,67 +125,6 @@ IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
     return d;
 }
 
-struct Ray {
-    Vec3 origin;
-    Vec3 direction;
-};
-
-SelectedFace find_selected_face(const Ray &ray) {
-    SelectedFace selected;
-    float min_t = std::numeric_limits<float>::max();
-    for (int i = 0; i < world.tetraoctas.size(); ++i) {
-        Mesh mesh = world.tetraoctas[i].mesh;
-        int n_faces = mesh.vertices.size() / 3.f;
-        for (int face_index = 0; face_index < n_faces; ++face_index) {
-            // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
-            Vec3 normal = mesh.normals[face_index * 3];
-            if (dot(normal, ray.direction) >= 0) {
-                // triangle is facing away from ray
-                continue;
-            }
-
-            Vec3 v0 = mesh.vertices[face_index * 3];
-            Vec3 v1 = mesh.vertices[face_index * 3 + 1];
-            Vec3 v2 = mesh.vertices[face_index * 3 + 2];
-
-            auto plane_distance = dot(normal, v0);
-            float t = -(dot(normal, ray.origin) - plane_distance) / dot(normal, ray.direction);
-            if (t <= 0) {
-                // triangle is behind the ray
-                continue;
-            }
-
-            Vec3 point_intersect = ray.origin + ray.direction * t;
-            Vec3 e0 = v1 - v0;
-            Vec3 e1 = v2 - v1;
-            Vec3 e2 = v0 - v2;
-            Vec3 c0 = point_intersect - v0;
-            Vec3 c1 = point_intersect - v1;
-            Vec3 c2 = point_intersect - v2;
-            if (dot(normal, cross(e0, c0)) > 0 && dot(normal, cross(e1, c1)) > 0 &&
-                dot(normal, cross(e2, c2)) > 0) {
-                // point is inside the triangle
-                if (t < min_t) {
-                    min_t = t;
-                    selected.target_index = i;
-                    selected.face_index = face_index;
-                }
-            }
-        }
-    }
-
-    return selected;
-}
-
-void select_face(SelectedFace selected) { world.selected = selected; }
-
-void unselected_face() { world.selected.target_index = -1; }
-
-void mouse_pick() {
-    Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
-    select_face(find_selected_face(ray));
-}
-
 void update_fpv_view(Camera &camera, CameraControls &controls, float dt) {
     Vec3 velocity;
 
@@ -286,21 +149,22 @@ void update_fpv_view(Camera &camera, CameraControls &controls, float dt) {
     if (controls.move_faster)
         velocity *= 2.f;
 
-    Sphere sphere = {.pos = camera.position(), .radius = 0.3};
-    for (const auto &other : world.rectangles) {
-        IntersectData d = intersect(other, sphere);
-        if (d.intersected) {
-            // standard collision response
-            velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
-        }
-    }
+    // FIXME: collisions with tetra/octa
+    //    Sphere sphere = {.pos = camera.position(), .radius = 0.3};
+    //    for (const auto &other : world.rectangles) {
+    //        IntersectData d = intersect(other, sphere);
+    //        if (d.intersected) {
+    //            // standard collision response
+    //            velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
+    //        }
+    //    }
 
     camera.set_position(camera.position() + velocity * dt);
     camera.rotate_direction(controls.dx, controls.dy);
     controls.dx = 0;
     controls.dy = 0;
 
-    mouse_pick();
+    editor::mouse_pick();
 }
 
 void update_move_around(Camera &camera, CameraControls &controls, float dt) {
@@ -346,7 +210,10 @@ void update(Camera &camera, CameraControls &controls, float dt) {
     }
 }
 
-void update(float dt) { update(world.camera, world.camera_controls, dt); }
+void update(float dt) {
+    update(world.camera, world.camera_controls, dt);
+    teleportation::update_target();
+}
 
 void init() {
     //    buffers = {make_surface(10, 10)};
@@ -373,77 +240,6 @@ void init() {
     //    world.tetraoctas = {make_octa()};
     world.axes = make_axes();
     glEnable(GL_DEPTH_TEST);
-}
-
-enum ObjectType { Tetrahedron, Octahedron };
-
-int add_object(TetraOcta object) {
-    world.tetraoctas.push_back(object);
-    return world.tetraoctas.size() - 1;
-}
-
-void remove_object(int index) { world.tetraoctas.erase(std::begin(world.tetraoctas) + index); }
-
-// FIXME: use a better mechanism than changing the state of actions (in this case, to set the index
-// after adding the object)
-struct AddObjectAction {
-    TetraOcta object;
-    std::optional<int> index;
-};
-
-struct RemoveObjectAction {
-    std::optional<TetraOcta> object;
-    int index{-1};
-};
-
-using ActionType = std::variant<AddObjectAction, RemoveObjectAction>;
-
-struct ActionApplyVisitor {
-    void operator()(AddObjectAction &action) { action.index = add_object(action.object); }
-
-    void operator()(RemoveObjectAction &action) {
-        action.object = world.tetraoctas[action.index];
-        remove_object(action.index);
-    }
-};
-
-struct ActionUndoVisitor {
-    void operator()(AddObjectAction &action) { remove_object(*action.index); }
-
-    void operator()(RemoveObjectAction &action) { action.index = add_object(*action.object); }
-};
-
-UndoRedo<ActionType, ActionApplyVisitor, ActionUndoVisitor> action_system;
-
-void emit(ActionType action) {
-    action_system.add(action);
-    action_system.apply_all_unapplied();
-}
-
-void undo() { action_system.undo(); }
-
-void redo() { action_system.redo(); }
-
-void add_to_selected_face(ObjectType type) {
-    if (world.selected.target_index >= 0) {
-        int face_index = world.selected.face_index;
-        TetraOcta obj = world.tetraoctas[world.selected.target_index];
-        Vec3 v0 = obj.mesh.vertices[face_index * 3];
-        Vec3 v1 = obj.mesh.vertices[face_index * 3 + 1];
-        Vec3 v2 = obj.mesh.vertices[face_index * 3 + 2];
-        Mesh mesh = type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2)
-                                                    : octa_from_face(v0, v2, v1);
-
-        emit(AddObjectAction{.object = make_tetra_or_octa(mesh)});
-        unselected_face();
-    }
-}
-
-void remove_selected_object() {
-    if (world.selected.target_index >= 0 && world.tetraoctas.size() > 1) {
-        emit(RemoveObjectAction{.index = world.selected.target_index});
-        unselected_face();
-    }
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -535,23 +331,23 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 
     if (key == GLFW_KEY_T && action == GLFW_PRESS) {
-        add_to_selected_face(ObjectType::Tetrahedron);
+        editor::add_to_selected_face(editor::ObjectType::Tetrahedron);
     }
 
     if (key == GLFW_KEY_O && action == GLFW_PRESS) {
-        add_to_selected_face(ObjectType::Octahedron);
+        editor::add_to_selected_face(editor::ObjectType::Octahedron);
     }
 
     if (key == GLFW_KEY_X && action == GLFW_PRESS) {
-        remove_selected_object();
+        editor::remove_selected_object();
     }
 
     if (key == GLFW_KEY_LEFT_BRACKET && action == GLFW_PRESS) {
-        undo();
+        editor::undo();
     }
 
     if (key == GLFW_KEY_RIGHT_BRACKET && action == GLFW_PRESS) {
-        redo();
+        editor::redo();
     }
 }
 
@@ -592,12 +388,22 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
     world.camera_controls.dy = dy;
 }
 
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            teleportation::initiate();
+        } else if (action == GLFW_RELEASE) {
+            teleportation::confirm();
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     GLFWwindow *window;
 
     glfwInit();
     float ratio = 16.f / 9.f;
-    int width = 1920;
+    int width = 1024;
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(width, width / ratio, "Game", NULL, NULL);
@@ -610,6 +416,7 @@ int main(int argc, char **argv) {
 
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     glewInit();
     init();

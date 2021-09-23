@@ -1,5 +1,9 @@
 #pragma once
 
+#include <iostream>
+#include <variant>
+#include <vector>
+
 template <typename ActionType, typename ApplyVisitor, typename UndoVisitor> class UndoRedo {
   public:
     UndoRedo() : m_last_applied(-1) {}
