@@ -30,7 +30,7 @@ void main(void) {
     float spec = ((n + 8) / (8*PI)) * pow(max(0, dot(-light_dir_reflected, viewer_dir)), n);
 
     vec3 light_color = vec3(1, 1, 1);
-    vec3 ambient = 0.1 * light_color;
+    vec3 ambient = 0.3 * light_color;
     vec3 diffuse = 0.7 * diff * light_color;
     vec3 specular = 0.2 * spec * light_color;
 

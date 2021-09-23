@@ -133,7 +133,7 @@ void draw_middle_point() {
 }
 
 void display() {
-    glClearColor(0.0, 0, 0, 1.0);
+    glClearColor(0.1, 0.1, 0.1, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     if (world.render_controls.draw_axes) {
@@ -523,13 +523,30 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 }
 
-struct Mouse {
-    int x;
-    int y;
-    bool already_moved = false;
+struct MouseDelta {
+  public:
+    MouseDelta() : m_already_moved(false) {}
+
+    std::pair<float, float> get_delta(float xpos, float ypos) {
+        if (!m_already_moved) {
+            m_already_moved = true;
+            m_prev_x = xpos;
+            m_prev_y = ypos;
+        }
+        float dx = xpos - m_prev_x;
+        float dy = m_prev_y - ypos;
+        m_prev_x = xpos;
+        m_prev_y = ypos;
+        return {dx, dy};
+    }
+
+  private:
+    float m_prev_x;
+    float m_prev_y;
+    bool m_already_moved;
 };
 
-Mouse mouse;
+MouseDelta mouse_delta;
 
 Timer mouse_throttle;
 
@@ -538,16 +555,9 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
         return;
     mouse_throttle.tick();
 
-    if (!mouse.already_moved) {
-        mouse.already_moved = true;
-        mouse.x = xpos;
-        mouse.y = ypos;
-    }
-
-    world.camera_controls.dx = xpos - mouse.x;
-    world.camera_controls.dy = mouse.y - ypos;
-    mouse.x = xpos;
-    mouse.y = ypos;
+    auto [dx, dy] = mouse_delta.get_delta(xpos, ypos);
+    world.camera_controls.dx = dx;
+    world.camera_controls.dy = dy;
 }
 
 int main(int argc, char **argv) {
