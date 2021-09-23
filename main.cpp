@@ -262,7 +262,7 @@ void mouse_pick() {
     select_face(find_selected_face(ray));
 }
 
-void update(Camera &camera, CameraControls &controls, float dt) {
+void update_fpv_view(Camera &camera, CameraControls &controls, float dt) {
     Vec3 velocity;
 
     if (controls.move_right) {
@@ -272,9 +272,9 @@ void update(Camera &camera, CameraControls &controls, float dt) {
     }
 
     if (controls.move_backwards) {
-        velocity -= controls.move_around ? camera.move_towards() : camera.move_towards_restricted();
+        velocity -= camera.move_towards_restricted();
     } else if (controls.move_forward) {
-        velocity += controls.move_around ? camera.move_towards() : camera.move_towards_restricted();
+        velocity += camera.move_towards_restricted();
     }
 
     if (controls.move_up) {
@@ -296,21 +296,53 @@ void update(Camera &camera, CameraControls &controls, float dt) {
     }
 
     camera.set_position(camera.position() + velocity * dt);
-
-    if (controls.move_around) {
-        if (world.selected.target_index != -1) {
-            camera.rotate_around(face_centroid(world.tetraoctas[world.selected.target_index].mesh,
-                                               world.selected.face_index),
-                                 -controls.dx, -controls.dy);
-        }
-    } else {
-        camera.rotate_direction(controls.dx, controls.dy);
-    }
+    camera.rotate_direction(controls.dx, controls.dy);
     controls.dx = 0;
     controls.dy = 0;
 
-    if (!controls.move_around) {
-        mouse_pick();
+    mouse_pick();
+}
+
+void update_move_around(Camera &camera, CameraControls &controls, float dt) {
+    Vec3 velocity;
+
+    if (controls.move_right) {
+        velocity = camera.move_horizontal();
+    } else if (controls.move_left) {
+        velocity = 0 - camera.move_horizontal();
+    }
+
+    if (controls.move_backwards) {
+        velocity -= camera.move_towards();
+    } else if (controls.move_forward) {
+        velocity += camera.move_towards();
+    }
+
+    if (controls.move_up) {
+        velocity += camera.move_vertical();
+    } else if (controls.move_down) {
+        velocity -= camera.move_vertical();
+    }
+
+    if (controls.move_faster)
+        velocity *= 2.f;
+
+    camera.set_position(camera.position() + velocity * dt);
+
+    if (world.selected.target_index != -1) {
+        camera.rotate_around(face_centroid(world.tetraoctas[world.selected.target_index].mesh,
+                                           world.selected.face_index),
+                             -controls.dx, -controls.dy);
+    }
+    controls.dx = 0;
+    controls.dy = 0;
+}
+
+void update(Camera &camera, CameraControls &controls, float dt) {
+    if (controls.move_around) {
+        update_move_around(camera, controls, dt);
+    } else {
+        update_fpv_view(camera, controls, dt);
     }
 }
 
