@@ -9,7 +9,6 @@ void initiate() { world.teleportation.visualize = true; }
 void update_target() {
     if (world.teleportation.visualize) {
         world.teleportation.target = world.camera.position() + world.camera.direction() * 10;
-        log(string(world.teleportation.target));
     }
 }
 

@@ -2,7 +2,6 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <chrono>
 #include <cmath>
 #include <utility>
 
@@ -11,42 +10,8 @@
 #include "logging.h"
 #include "mesh.h"
 #include "objects.h"
+#include "timer.h"
 #include "world.h"
-
-class Timer {
-  public:
-    Timer() { reset(); }
-
-    void reset() { m_timepoint = std::chrono::high_resolution_clock::now(); }
-
-    float seconds_elapsed() {
-        auto new_timepoint = std::chrono::high_resolution_clock::now();
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(new_timepoint - m_timepoint)
-                      .count();
-        return ms / 1000.f;
-    }
-
-    float tick() {
-        auto s = seconds_elapsed();
-        reset();
-        return s;
-    }
-
-  private:
-    std::chrono::time_point<std::chrono::high_resolution_clock> m_timepoint;
-};
-
-class FPSCounter {
-  public:
-    FPSCounter() : m_last_dt(1) {}
-
-    void tick(float dt) { m_last_dt = dt; }
-
-    float fps() const { return 1.f / m_last_dt; }
-
-  private:
-    float m_last_dt;
-};
 
 void draw_middle_point() {
     glPointSize(5);
@@ -397,6 +362,18 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
         }
     }
 }
+
+class FPSCounter {
+  public:
+    FPSCounter() : m_last_dt(1) {}
+
+    void tick(float dt) { m_last_dt = dt; }
+
+    float fps() const { return 1.f / m_last_dt; }
+
+  private:
+    float m_last_dt;
+};
 
 int main(int argc, char **argv) {
     GLFWwindow *window;
