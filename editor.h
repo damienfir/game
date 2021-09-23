@@ -13,6 +13,7 @@ struct SelectedFace {
 struct Editor {
     std::optional<TetraOcta> phantom_object;
     SelectedFace selected;
+    ObjectType target_type;
 };
 
 namespace editor {

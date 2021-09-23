@@ -131,7 +131,7 @@ void mouse_pick() {
         if (world.editor->selected.target_index != -1) {
             TetraOcta obj =
                 object_from_face(world.tetraoctas[world.editor->selected.target_index],
-                                 world.editor->selected.face_index, ObjectType::Tetrahedron);
+                                 world.editor->selected.face_index, world.editor->target_type);
             obj.obj.alpha = 0.3;
             obj.obj.color = {0, 1, 0};
             world.editor->phantom_object = obj;
@@ -171,12 +171,10 @@ void keyboard_input(int key, int action) {
         }
     }
 
-    if (key == GLFW_KEY_T && action == GLFW_PRESS) {
-        add_to_selected_face(ObjectType::Tetrahedron);
-    }
-
-    if (key == GLFW_KEY_O && action == GLFW_PRESS) {
-        add_to_selected_face(ObjectType::Octahedron);
+    if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
+        world.editor->target_type = world.editor->target_type == ObjectType::Tetrahedron
+                                        ? ObjectType::Octahedron
+                                        : ObjectType::Tetrahedron;
     }
 
     if (key == GLFW_KEY_X && action == GLFW_PRESS) {
@@ -192,6 +190,10 @@ void keyboard_input(int key, int action) {
     }
 }
 
-void mouse_button_input(int button, int action) {}
+void mouse_button_input(int button, int action) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        add_to_selected_face(world.editor->target_type);
+    }
+}
 
 }; // namespace editor
