@@ -27,14 +27,14 @@ void display() {
 
     for (int i = 0; i < world.tetraoctas.size(); ++i) {
         SolidObjectProperties obj = world.tetraoctas[i].obj;
-        if (i == world.editor.selected.target_index) {
-            obj.highlighted_face = world.editor.selected.face_index;
+        if (world.editor && i == world.editor->selected.target_index) {
+            obj.highlighted_face = world.editor->selected.face_index;
         }
         draw(world.tetraoctas[i].rendering, obj, world.camera);
     }
 
-    if (world.editor.phantom_object) {
-        TetraOcta object = *world.editor.phantom_object;
+    if (world.editor && world.editor->phantom_object) {
+        TetraOcta object = *world.editor->phantom_object;
         draw(object.rendering, object.obj, world.camera);
     }
 
@@ -89,7 +89,9 @@ IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
 
 void update(float dt) {
     update(world.camera, dt);
-    editor::mouse_pick();
+    if (world.editor) {
+        editor::mouse_pick();
+    }
     teleportation::update_target();
 }
 
@@ -189,14 +191,6 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         }
     }
 
-    if (key == GLFW_KEY_LEFT_CONTROL) {
-        if (action == GLFW_PRESS) {
-            world.camera.controls.move_around = true;
-        } else if (action == GLFW_RELEASE) {
-            world.camera.controls.move_around = false;
-        }
-    }
-
     if (key == GLFW_KEY_BACKSLASH && action == GLFW_PRESS) {
         world.render_controls.wireframe = !world.render_controls.wireframe;
         if (world.render_controls.wireframe) {
@@ -210,24 +204,16 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         world.render_controls.draw_axes = !world.render_controls.draw_axes;
     }
 
-    if (key == GLFW_KEY_T && action == GLFW_PRESS) {
-        editor::add_to_selected_face(editor::ObjectType::Tetrahedron);
+    if (key == GLFW_KEY_F1 && action == GLFW_PRESS) {
+        if (world.editor) {
+            world.editor = std::nullopt;
+        } else {
+            world.editor = Editor{};
+        }
     }
 
-    if (key == GLFW_KEY_O && action == GLFW_PRESS) {
-        editor::add_to_selected_face(editor::ObjectType::Octahedron);
-    }
-
-    if (key == GLFW_KEY_X && action == GLFW_PRESS) {
-        editor::remove_selected_object();
-    }
-
-    if (key == GLFW_KEY_LEFT_BRACKET && action == GLFW_PRESS) {
-        editor::undo();
-    }
-
-    if (key == GLFW_KEY_RIGHT_BRACKET && action == GLFW_PRESS) {
-        editor::redo();
+    if (world.editor) {
+        editor::keyboard_input(key, action);
     }
 }
 

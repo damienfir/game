@@ -24,5 +24,6 @@ void add_to_selected_face(ObjectType type);
 void redo();
 void remove_selected_object();
 void undo();
+void keyboard_input(int key, int action);
 
 } // namespace editor

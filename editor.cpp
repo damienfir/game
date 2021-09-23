@@ -1,5 +1,6 @@
 #include "editor.h"
 
+#include <GLFW/glfw3.h>
 #include <optional>
 
 #include "maths.h"
@@ -10,9 +11,9 @@
 
 namespace editor {
 
-void select_face(SelectedFace selected) { world.editor.selected = selected; }
+void select_face(SelectedFace selected) { world.editor->selected = selected; }
 
-void unselected_face() { world.editor.selected.target_index = -1; }
+void unselected_face() { world.editor->selected.target_index = -1; }
 
 int add_object(TetraOcta object, World &world) {
     world.tetraoctas.push_back(object);
@@ -127,15 +128,15 @@ void mouse_pick() {
         Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
         select_face(find_selected_face(ray));
 
-        if (world.editor.selected.target_index != -1) {
+        if (world.editor->selected.target_index != -1) {
             TetraOcta obj =
-                object_from_face(world.tetraoctas[world.editor.selected.target_index],
-                                 world.editor.selected.face_index, ObjectType::Tetrahedron);
+                object_from_face(world.tetraoctas[world.editor->selected.target_index],
+                                 world.editor->selected.face_index, ObjectType::Tetrahedron);
             obj.obj.alpha = 0.3;
             obj.obj.color = {0, 1, 0};
-            world.editor.phantom_object = obj;
+            world.editor->phantom_object = obj;
         } else {
-            world.editor.phantom_object = std::nullopt;
+            world.editor->phantom_object = std::nullopt;
         }
     }
 }
@@ -145,9 +146,9 @@ void undo() { action_system.undo(); }
 void redo() { action_system.redo(); }
 
 void add_to_selected_face(ObjectType type) {
-    if (world.editor.selected.target_index >= 0) {
-        int face_index = world.editor.selected.face_index;
-        TetraOcta obj = world.tetraoctas[world.editor.selected.target_index];
+    if (world.editor->selected.target_index >= 0) {
+        int face_index = world.editor->selected.face_index;
+        TetraOcta obj = world.tetraoctas[world.editor->selected.target_index];
         TetraOcta new_obj = object_from_face(obj, face_index, type);
         emit(AddObjectAction{.object = new_obj});
         unselected_face();
@@ -155,9 +156,39 @@ void add_to_selected_face(ObjectType type) {
 }
 
 void remove_selected_object() {
-    if (world.editor.selected.target_index >= 0 && world.tetraoctas.size() > 1) {
-        emit(RemoveObjectAction{.index = world.editor.selected.target_index});
+    if (world.editor->selected.target_index >= 0 && world.tetraoctas.size() > 1) {
+        emit(RemoveObjectAction{.index = world.editor->selected.target_index});
         unselected_face();
+    }
+}
+
+void keyboard_input(int key, int action) {
+    if (key == GLFW_KEY_LEFT_CONTROL) {
+        if (action == GLFW_PRESS) {
+            world.camera.controls.move_around = true;
+        } else if (action == GLFW_RELEASE) {
+            world.camera.controls.move_around = false;
+        }
+    }
+
+    if (key == GLFW_KEY_T && action == GLFW_PRESS) {
+        add_to_selected_face(ObjectType::Tetrahedron);
+    }
+
+    if (key == GLFW_KEY_O && action == GLFW_PRESS) {
+        add_to_selected_face(ObjectType::Octahedron);
+    }
+
+    if (key == GLFW_KEY_X && action == GLFW_PRESS) {
+        remove_selected_object();
+    }
+
+    if (key == GLFW_KEY_LEFT_BRACKET && action == GLFW_PRESS) {
+        undo();
+    }
+
+    if (key == GLFW_KEY_RIGHT_BRACKET && action == GLFW_PRESS) {
+        redo();
     }
 }
 

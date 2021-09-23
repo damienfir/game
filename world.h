@@ -14,7 +14,7 @@ struct RenderControls {
 struct World {
 //    std::vector<Rectangle> rectangles;
     std::vector<TetraOcta> tetraoctas;
-    Editor editor;
+    std::optional<Editor> editor;
     Camera camera;
     Axes axes;
     RenderControls render_controls;

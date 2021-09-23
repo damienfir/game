@@ -117,17 +117,16 @@ void update_move_around(Camera &camera, float dt) {
 
     camera.set_position(camera.position() + velocity * dt);
 
-    if (world.editor.selected.target_index != -1) {
-        camera.rotate_around(face_centroid(world.tetraoctas[world.editor.selected.target_index].mesh,
-                                           world.editor.selected.face_index),
-                             -camera.controls.dx, -camera.controls.dy);
-    }
+    camera.rotate_around(face_centroid(world.tetraoctas[world.editor->selected.target_index].mesh,
+                                       world.editor->selected.face_index),
+                         -camera.controls.dx, -camera.controls.dy);
+
     camera.controls.dx = 0;
     camera.controls.dy = 0;
 }
 
 void update(Camera &camera, float dt) {
-    if (camera.controls.move_around) {
+    if (world.editor && camera.controls.move_around) {
         update_move_around(camera, dt);
     } else {
         update_fpv_view(camera, dt);
