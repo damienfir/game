@@ -35,6 +35,7 @@ void draw(const BasicRenderingBuffer &buffer, const SolidObjectProperties &obj,
     set_vec3(buffer.shader, "color", obj.color);
     set_vec3(buffer.shader, "viewer_pos", camera.position());
     set_int(buffer.shader, "highlighted_face", obj.highlighted_face);
+    set_float(buffer.shader, "alpha", obj.alpha);
 
     glDrawArrays(GL_TRIANGLES, 0, buffer.n_vertices);
     glBindVertexArray(0);

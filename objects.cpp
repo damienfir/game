@@ -7,7 +7,7 @@ TetraOcta make_tetra_or_octa(Mesh mesh) {
     TetraOcta obj;
     obj.mesh = std::move(mesh);
     obj.obj.transform = eye();
-    obj.obj.color = {0.3, 0.3, 0.4};
+    obj.obj.color = {0.1, 0.1, 0.7};
     obj.rendering = init_rendering(obj.mesh);
     return obj;
 }

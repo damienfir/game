@@ -18,6 +18,7 @@ struct SolidObjectProperties {
     Vec3 color;
     Mat4 transform;
     int highlighted_face{-1};
+    float alpha{1};
 };
 
 struct Rectangle {

@@ -117,9 +117,9 @@ void update_move_around(Camera &camera, float dt) {
 
     camera.set_position(camera.position() + velocity * dt);
 
-    if (world.selected.target_index != -1) {
-        camera.rotate_around(face_centroid(world.tetraoctas[world.selected.target_index].mesh,
-                                           world.selected.face_index),
+    if (world.editor.selected.target_index != -1) {
+        camera.rotate_around(face_centroid(world.tetraoctas[world.editor.selected.target_index].mesh,
+                                           world.editor.selected.face_index),
                              -camera.controls.dx, -camera.controls.dy);
     }
     camera.controls.dx = 0;

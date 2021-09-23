@@ -77,6 +77,11 @@ void set_int(const Shader &shader, const std::string &name, int value) {
     glUniform1i(loc, value);
 }
 
+void set_float(const Shader &shader, const std::string &name, float value) {
+    int loc = glGetUniformLocation(shader.program, name.c_str());
+    glUniform1f(loc, value);
+}
+
 UseShader::UseShader(unsigned int program) { glUseProgram(program); }
 
 UseShader::~UseShader() { glUseProgram(0); }

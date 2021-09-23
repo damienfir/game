@@ -4,6 +4,7 @@
 uniform vec3 color;
 uniform vec3 viewer_pos;
 uniform int highlighted_face;
+uniform float alpha;
 
 in vec3 normal;
 in vec3 pos;
@@ -38,6 +39,6 @@ void main(void) {
     if (highlighted_face == face_index) {
         FragColor = vec4(vec3(0.8), 1);
     } else {
-        FragColor = vec4((ambient + diffuse + specular) * color, 1.0);
+        FragColor = vec4((ambient + diffuse + specular) * color, alpha);
     }
 }

@@ -8,9 +8,11 @@
 #include "undoredo.h"
 #include "world.h"
 
-void select_face(editor::SelectedFace selected) { world.selected = selected; }
+namespace editor {
 
-void unselected_face() { world.selected.target_index = -1; }
+void select_face(SelectedFace selected) { world.editor.selected = selected; }
+
+void unselected_face() { world.editor.selected.target_index = -1; }
 
 int add_object(TetraOcta object, World &world) {
     world.tetraoctas.push_back(object);
@@ -64,8 +66,8 @@ struct Ray {
     Vec3 direction;
 };
 
-editor::SelectedFace find_selected_face(const Ray &ray) {
-    editor::SelectedFace selected;
+SelectedFace find_selected_face(const Ray &ray) {
+    SelectedFace selected;
     float min_t = std::numeric_limits<float>::max();
     for (int i = 0; i < world.tetraoctas.size(); ++i) {
         Mesh mesh = world.tetraoctas[i].mesh;
@@ -111,12 +113,30 @@ editor::SelectedFace find_selected_face(const Ray &ray) {
     return selected;
 }
 
-namespace editor {
+TetraOcta object_from_face(const TetraOcta &obj, int face_index, ObjectType type) {
+    Vec3 v0 = obj.mesh.vertices[face_index * 3];
+    Vec3 v1 = obj.mesh.vertices[face_index * 3 + 1];
+    Vec3 v2 = obj.mesh.vertices[face_index * 3 + 2];
+    Mesh mesh =
+        type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2) : octa_from_face(v0, v2, v1);
+    return make_tetra_or_octa(mesh);
+}
 
 void mouse_pick() {
     if (!world.camera.controls.move_around) {
         Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
         select_face(find_selected_face(ray));
+
+        if (world.editor.selected.target_index != -1) {
+            TetraOcta obj =
+                object_from_face(world.tetraoctas[world.editor.selected.target_index],
+                                 world.editor.selected.face_index, ObjectType::Tetrahedron);
+            obj.obj.alpha = 0.3;
+            obj.obj.color = {0, 1, 0};
+            world.editor.phantom_object = obj;
+        } else {
+            world.editor.phantom_object = std::nullopt;
+        }
     }
 }
 
@@ -125,23 +145,18 @@ void undo() { action_system.undo(); }
 void redo() { action_system.redo(); }
 
 void add_to_selected_face(ObjectType type) {
-    if (world.selected.target_index >= 0) {
-        int face_index = world.selected.face_index;
-        TetraOcta obj = world.tetraoctas[world.selected.target_index];
-        Vec3 v0 = obj.mesh.vertices[face_index * 3];
-        Vec3 v1 = obj.mesh.vertices[face_index * 3 + 1];
-        Vec3 v2 = obj.mesh.vertices[face_index * 3 + 2];
-        Mesh mesh = type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2)
-                                                    : octa_from_face(v0, v2, v1);
-
-        emit(AddObjectAction{.object = make_tetra_or_octa(mesh)});
+    if (world.editor.selected.target_index >= 0) {
+        int face_index = world.editor.selected.face_index;
+        TetraOcta obj = world.tetraoctas[world.editor.selected.target_index];
+        TetraOcta new_obj = object_from_face(obj, face_index, type);
+        emit(AddObjectAction{.object = new_obj});
         unselected_face();
     }
 }
 
 void remove_selected_object() {
-    if (world.selected.target_index >= 0 && world.tetraoctas.size() > 1) {
-        emit(RemoveObjectAction{.index = world.selected.target_index});
+    if (world.editor.selected.target_index >= 0 && world.tetraoctas.size() > 1) {
+        emit(RemoveObjectAction{.index = world.editor.selected.target_index});
         unselected_face();
     }
 }

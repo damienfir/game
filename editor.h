@@ -1,13 +1,21 @@
 #pragma once
 
-class World;
+#include "objects.h"
+#include <optional>
 
-namespace editor {
+class World;
 
 struct SelectedFace {
     int target_index = -1;
     int face_index;
 };
+
+struct Editor {
+    std::optional<TetraOcta> phantom_object;
+    SelectedFace selected;
+};
+
+namespace editor {
 
 enum ObjectType { Tetrahedron, Octahedron };
 

@@ -27,10 +27,15 @@ void display() {
 
     for (int i = 0; i < world.tetraoctas.size(); ++i) {
         SolidObjectProperties obj = world.tetraoctas[i].obj;
-        if (i == world.selected.target_index) {
-            obj.highlighted_face = world.selected.face_index;
+        if (i == world.editor.selected.target_index) {
+            obj.highlighted_face = world.editor.selected.face_index;
         }
         draw(world.tetraoctas[i].rendering, obj, world.camera);
+    }
+
+    if (world.editor.phantom_object) {
+        TetraOcta object = *world.editor.phantom_object;
+        draw(object.rendering, object.obj, world.camera);
     }
 
     camera::draw();
@@ -113,6 +118,8 @@ void init() {
     //    world.tetraoctas = {make_octa()};
     world.axes = make_axes();
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
