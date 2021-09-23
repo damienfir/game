@@ -13,14 +13,6 @@
 #include "timer.h"
 #include "world.h"
 
-void draw_middle_point() {
-    glPointSize(5);
-    glBegin(GL_POINTS);
-    glColor3d(1, 1, 1);
-    glVertex3d(0, 0, 0);
-    glEnd();
-}
-
 void display() {
     glClearColor(0.1, 0.1, 0.1, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -41,7 +33,7 @@ void display() {
         draw(world.tetraoctas[i].rendering, obj, world.camera);
     }
 
-    draw_middle_point();
+    camera::draw();
 }
 
 struct IntersectData {
@@ -90,93 +82,9 @@ IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
     return d;
 }
 
-void update_fpv_view(Camera &camera, CameraControls &controls, float dt) {
-    Vec3 velocity;
-
-    if (controls.move_right) {
-        velocity = camera.move_horizontal();
-    } else if (controls.move_left) {
-        velocity = 0 - camera.move_horizontal();
-    }
-
-    if (controls.move_backwards) {
-        velocity -= camera.move_towards_restricted();
-    } else if (controls.move_forward) {
-        velocity += camera.move_towards_restricted();
-    }
-
-    if (controls.move_up) {
-        velocity += camera.move_vertical();
-    } else if (controls.move_down) {
-        velocity -= camera.move_vertical();
-    }
-
-    if (controls.move_faster)
-        velocity *= 2.f;
-
-    // FIXME: collisions with tetra/octa
-    //    Sphere sphere = {.pos = camera.position(), .radius = 0.3};
-    //    for (const auto &other : world.rectangles) {
-    //        IntersectData d = intersect(other, sphere);
-    //        if (d.intersected) {
-    //            // standard collision response
-    //            velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
-    //        }
-    //    }
-
-    camera.set_position(camera.position() + velocity * dt);
-    camera.rotate_direction(controls.dx, controls.dy);
-    controls.dx = 0;
-    controls.dy = 0;
-
-    editor::mouse_pick();
-}
-
-void update_move_around(Camera &camera, CameraControls &controls, float dt) {
-    Vec3 velocity;
-
-    if (controls.move_right) {
-        velocity = camera.move_horizontal();
-    } else if (controls.move_left) {
-        velocity = 0 - camera.move_horizontal();
-    }
-
-    if (controls.move_backwards) {
-        velocity -= camera.move_towards();
-    } else if (controls.move_forward) {
-        velocity += camera.move_towards();
-    }
-
-    if (controls.move_up) {
-        velocity += camera.move_vertical();
-    } else if (controls.move_down) {
-        velocity -= camera.move_vertical();
-    }
-
-    if (controls.move_faster)
-        velocity *= 2.f;
-
-    camera.set_position(camera.position() + velocity * dt);
-
-    if (world.selected.target_index != -1) {
-        camera.rotate_around(face_centroid(world.tetraoctas[world.selected.target_index].mesh,
-                                           world.selected.face_index),
-                             -controls.dx, -controls.dy);
-    }
-    controls.dx = 0;
-    controls.dy = 0;
-}
-
-void update(Camera &camera, CameraControls &controls, float dt) {
-    if (controls.move_around) {
-        update_move_around(camera, controls, dt);
-    } else {
-        update_fpv_view(camera, controls, dt);
-    }
-}
-
 void update(float dt) {
-    update(world.camera, world.camera_controls, dt);
+    update(world.camera, dt);
+    editor::mouse_pick();
     teleportation::update_target();
 }
 
@@ -214,71 +122,71 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_A) {
         if (action == GLFW_PRESS) {
-            world.camera_controls.move_right = false;
-            world.camera_controls.move_left = true;
+            world.camera.controls.move_right = false;
+            world.camera.controls.move_left = true;
         } else if (action == GLFW_RELEASE) {
-            world.camera_controls.move_left = false;
+            world.camera.controls.move_left = false;
         }
     }
 
     if (key == GLFW_KEY_D) {
         if (action == GLFW_PRESS) {
-            world.camera_controls.move_left = false;
-            world.camera_controls.move_right = true;
+            world.camera.controls.move_left = false;
+            world.camera.controls.move_right = true;
         } else if (action == GLFW_RELEASE) {
-            world.camera_controls.move_right = false;
+            world.camera.controls.move_right = false;
         }
     }
 
     if (key == GLFW_KEY_W) {
         if (action == GLFW_PRESS) {
-            world.camera_controls.move_backwards = false;
-            world.camera_controls.move_forward = true;
+            world.camera.controls.move_backwards = false;
+            world.camera.controls.move_forward = true;
         } else if (action == GLFW_RELEASE) {
-            world.camera_controls.move_forward = false;
+            world.camera.controls.move_forward = false;
         }
     }
 
     if (key == GLFW_KEY_S) {
         if (action == GLFW_PRESS) {
-            world.camera_controls.move_forward = false;
-            world.camera_controls.move_backwards = true;
+            world.camera.controls.move_forward = false;
+            world.camera.controls.move_backwards = true;
         } else if (action == GLFW_RELEASE) {
-            world.camera_controls.move_backwards = false;
+            world.camera.controls.move_backwards = false;
         }
     }
 
     if (key == GLFW_KEY_E) {
         if (action == GLFW_PRESS) {
-            world.camera_controls.move_down = false;
-            world.camera_controls.move_up = true;
+            world.camera.controls.move_down = false;
+            world.camera.controls.move_up = true;
         } else if (action == GLFW_RELEASE) {
-            world.camera_controls.move_up = false;
+            world.camera.controls.move_up = false;
         }
     }
 
     if (key == GLFW_KEY_Q) {
         if (action == GLFW_PRESS) {
-            world.camera_controls.move_up = false;
-            world.camera_controls.move_down = true;
+            world.camera.controls.move_up = false;
+            world.camera.controls.move_down = true;
         } else if (action == GLFW_RELEASE) {
-            world.camera_controls.move_down = false;
+            world.camera.controls.move_down = false;
         }
     }
 
     if (key == GLFW_KEY_LEFT_SHIFT) {
         if (action == GLFW_PRESS) {
-            world.camera_controls.move_faster = true;
+            world.camera.controls.move_faster = true;
         } else if (action == GLFW_RELEASE) {
-            world.camera_controls.move_faster = false;
+            world.camera.controls.move_faster = false;
         }
     }
 
     if (key == GLFW_KEY_LEFT_CONTROL) {
         if (action == GLFW_PRESS) {
-            world.camera_controls.move_around = true;
+            world.camera.controls.move_around = true;
         } else if (action == GLFW_RELEASE) {
-            world.camera_controls.move_around = false;
+            world.camera.controls.move_around = false;
         }
     }
 
@@ -349,8 +257,8 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
     mouse_throttle.tick();
 
     auto [dx, dy] = mouse_delta.get_delta(xpos, ypos);
-    world.camera_controls.dx = dx;
-    world.camera_controls.dy = dy;
+    world.camera.controls.dx = dx;
+    world.camera.controls.dy = dy;
 }
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {

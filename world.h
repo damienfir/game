@@ -17,7 +17,6 @@ struct World {
     editor::SelectedFace selected;
     Camera camera;
     Axes axes;
-    CameraControls camera_controls;
     RenderControls render_controls;
     Teleportation teleportation;
 };

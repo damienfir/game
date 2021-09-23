@@ -38,6 +38,8 @@ class Camera {
     Mat4 projection() const { return m_projection; }
     Mat4 view() const { return m_view; }
 
+    CameraControls controls;
+
   private:
     void update_view_matrix();
 
@@ -51,3 +53,11 @@ class Camera {
     float m_faster_factor;
     float m_sensitivity;
 };
+
+void update(Camera &camera, float dt);
+
+namespace camera {
+
+void draw();
+
+}

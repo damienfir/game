@@ -12,12 +12,14 @@ void select_face(editor::SelectedFace selected) { world.selected = selected; }
 
 void unselected_face() { world.selected.target_index = -1; }
 
-int add_object(TetraOcta object, World& world) {
+int add_object(TetraOcta object, World &world) {
     world.tetraoctas.push_back(object);
     return world.tetraoctas.size() - 1;
 }
 
-void remove_object(int index, World& world) { world.tetraoctas.erase(std::begin(world.tetraoctas) + index); }
+void remove_object(int index, World &world) {
+    world.tetraoctas.erase(std::begin(world.tetraoctas) + index);
+}
 
 // FIXME: use a better mechanism than changing the state of actions (in this case, to set the index
 // after adding the object)
@@ -45,7 +47,9 @@ struct ActionApplyVisitor {
 struct ActionUndoVisitor {
     void operator()(AddObjectAction &action) { remove_object(*action.index, world); }
 
-    void operator()(RemoveObjectAction &action) { action.index = add_object(*action.object, world); }
+    void operator()(RemoveObjectAction &action) {
+        action.index = add_object(*action.object, world);
+    }
 };
 
 UndoRedo<ActionType, ActionApplyVisitor, ActionUndoVisitor> action_system;
@@ -107,13 +111,13 @@ editor::SelectedFace find_selected_face(const Ray &ray) {
     return selected;
 }
 
-
-
 namespace editor {
 
 void mouse_pick() {
-    Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
-    select_face(find_selected_face(ray));
+    if (!world.camera.controls.move_around) {
+        Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
+        select_face(find_selected_face(ray));
+    }
 }
 
 void undo() { action_system.undo(); }
@@ -142,4 +146,4 @@ void remove_selected_object() {
     }
 }
 
-};
+}; // namespace editor
