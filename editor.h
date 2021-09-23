@@ -17,13 +17,12 @@ struct Editor {
 
 namespace editor {
 
-enum ObjectType { Tetrahedron, Octahedron };
-
 void mouse_pick();
 void add_to_selected_face(ObjectType type);
 void redo();
 void remove_selected_object();
 void undo();
 void keyboard_input(int key, int action);
+void mouse_button_input(int button, int action);
 
 } // namespace editor

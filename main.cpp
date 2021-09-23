@@ -41,51 +41,7 @@ void display() {
     camera::draw();
 }
 
-struct IntersectData {
-    bool intersected = false;
-    Vec3 normal;
-};
 
-struct Sphere {
-    Vec3 pos;
-    float radius;
-};
-
-IntersectData intersect(const Rectangle &r, const Sphere &sphere) {
-    IntersectData d;
-    Vec3 pos = r.obj.transform * r.center;
-
-    if (norm(sphere.pos - pos) - sphere.radius >
-        norm({r.width / 2.f, r.height / 2.f, r.depth / 2.f})) {
-        return d;
-    }
-
-    float distances[] = {
-        pos.x - r.width / 2.f - sphere.pos.x,    // left
-        sphere.pos.x - (pos.x + r.width / 2.f),  // right
-        sphere.pos.y - (pos.y + r.height / 2.f), // top
-        pos.y - r.height / 2.f - sphere.pos.y,   // bottom
-        sphere.pos.z - (pos.z + r.depth / 2.f),  // front
-        pos.z - r.depth / 2.f - sphere.pos.z,    // back
-    };
-    int index_smallest_distance = -1;
-    bool intersected = false;
-    for (int i = 0; i < 6; ++i) {
-        if (distances[i] >= 0 && distances[i] < sphere.radius) {
-            if (index_smallest_distance == -1 ||
-                distances[i] < distances[index_smallest_distance]) {
-                index_smallest_distance = i;
-            }
-            intersected = true;
-        }
-    }
-    Vec3 normals[] = {{-1, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
-    if (intersected) {
-        d.intersected = true;
-        d.normal = normals[index_smallest_distance];
-    }
-    return d;
-}
 
 void update(float dt) {
     update(world.camera, dt);
@@ -255,11 +211,15 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
 }
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) {
-        if (action == GLFW_PRESS) {
-            teleportation::initiate();
-        } else if (action == GLFW_RELEASE) {
-            teleportation::confirm();
+    if (world.editor) {
+        editor::mouse_button_input(button, action);
+    } else {
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            if (action == GLFW_PRESS) {
+                teleportation::initiate();
+            } else if (action == GLFW_RELEASE) {
+                teleportation::confirm();
+            }
         }
     }
 }

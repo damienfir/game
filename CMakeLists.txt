@@ -6,5 +6,18 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 
-add_executable(game main.cpp shader.cpp buffer.cpp logging.cpp maths.cpp camera.cpp mesh.cpp mesh.h axes.cpp axes.h editor.cpp editor.h objects.cpp world.cpp teleportation.cpp)
+add_executable(game
+               main.cpp
+               shader.cpp
+               buffer.cpp
+               logging.cpp
+               maths.cpp
+               camera.cpp
+               mesh.cpp
+               axes.cpp
+               editor.cpp
+               objects.cpp
+               world.cpp
+               teleportation.cpp
+               physics.cpp)
 target_link_libraries(game glfw GLEW OpenGL::GL)

@@ -120,7 +120,7 @@ TetraOcta object_from_face(const TetraOcta &obj, int face_index, ObjectType type
     Vec3 v2 = obj.mesh.vertices[face_index * 3 + 2];
     Mesh mesh =
         type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2) : octa_from_face(v0, v2, v1);
-    return make_tetra_or_octa(mesh);
+    return make_tetra_or_octa(mesh, type);
 }
 
 void mouse_pick() {
@@ -191,5 +191,7 @@ void keyboard_input(int key, int action) {
         redo();
     }
 }
+
+void mouse_button_input(int button, int action) {}
 
 }; // namespace editor

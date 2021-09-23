@@ -20,4 +20,8 @@ Editor
 - Move selected objects as whole
   - Selected objects are groups of polyhedra
 - Change color of object/polyhedra
-- Preview "phantom" object before adding it
+- Do not allow overlapping with other objects
+- Camera "snaps" to faces when not turning around
+- Rotate octahedron
+- Choose which object type for preview
+  - Idea: add with mouse click, change type with T or O

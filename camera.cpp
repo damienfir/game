@@ -1,6 +1,7 @@
 #include "camera.h"
 
 #include "logging.h"
+#include "physics.h"
 #include "world.h"
 
 Camera::Camera()
@@ -75,15 +76,22 @@ void update_fpv_view(Camera &camera, float dt) {
     if (camera.controls.move_faster)
         velocity *= 2.f;
 
-    // FIXME: collisions with tetra/octa
-    //    Sphere sphere = {.pos = camera.position(), .radius = 0.3};
-    //    for (const auto &other : world.rectangles) {
-    //        IntersectData d = intersect(other, sphere);
-    //        if (d.intersected) {
-    //            // standard collision response
-    //            velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
-    //        }
-    //    }
+    if (norm(velocity) > 0) {
+
+        Sphere sphere = {.pos = camera.position(), .radius = 0.2};
+        //    for (const auto &other : world.rectangles) {
+        //        IntersectData d = intersect(other, sphere);
+        //        if (d.intersected) {
+        //            // standard collision response
+        //            velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
+        //        }
+        //    }
+        IntersectData d = intersect_tetras_point(sphere);
+        if (d.intersected) {
+            // standard collision response
+            velocity -= d.normal * std::min(0.f, dot(d.normal, velocity));
+        }
+    }
 
     camera.set_position(camera.position() + velocity * dt);
     camera.rotate_direction(camera.controls.dx, camera.controls.dy);
