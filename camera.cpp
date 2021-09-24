@@ -77,7 +77,6 @@ void update_fpv_view(Camera &camera, float dt) {
         velocity *= 2.f;
 
     if (norm(velocity) > 0) {
-
         Sphere sphere = {.pos = camera.position(), .radius = 0.2};
         //    for (const auto &other : world.rectangles) {
         //        IntersectData d = intersect(other, sphere);
@@ -134,7 +133,7 @@ void update_move_around(Camera &camera, float dt) {
 }
 
 void update(Camera &camera, float dt) {
-    if (world.editor && camera.controls.move_around) {
+    if (world.editor && camera.controls.move_around && world.editor->selected.target_index != -1) {
         update_move_around(camera, dt);
     } else {
         update_fpv_view(camera, dt);

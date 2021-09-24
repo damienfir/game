@@ -12,6 +12,8 @@ struct TetraOcta {
     BasicRenderingBuffer rendering;
 };
 
+struct PolyObject {
+    std::vector<unsigned int> parts;
+};
+
 TetraOcta make_tetra_or_octa(Mesh mesh, ObjectType type);
-TetraOcta tetra_from_octa_face(const TetraOcta &octa, int face);
-TetraOcta make_tetra();

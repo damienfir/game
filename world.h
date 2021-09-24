@@ -1,8 +1,8 @@
 #pragma once
 
+#include "axes.h"
 #include "camera.h"
 #include "editor.h"
-#include "axes.h"
 #include "objects.h"
 #include "teleportation.h"
 
@@ -12,13 +12,14 @@ struct RenderControls {
 };
 
 struct World {
-//    std::vector<Rectangle> rectangles;
+    //    std::vector<Rectangle> rectangles;
     std::vector<TetraOcta> tetraoctas;
-    std::optional<Editor> editor;
+    std::vector<PolyObject> objects;
+    Teleportation teleportation;
+    std::optional<Editor> editor = Editor{};
     Camera camera;
     Axes axes;
     RenderControls render_controls;
-    Teleportation teleportation;
 };
 
 extern World world;

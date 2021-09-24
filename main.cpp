@@ -13,6 +13,33 @@
 #include "timer.h"
 #include "world.h"
 
+template <typename A, typename B> struct Pair {
+    A a;
+    B b;
+};
+
+std::vector<Pair<Mesh, ObjectType>> ground_mesh() {
+    Vec3 a0 = {0, 0, 0};
+    Vec3 b0 = {1, 0, 0};
+    Vec3 normal0 = {0, -1, 0};
+    Face face = face_from_line(a0, b0, normal0);
+    Mesh tetra0 = tetra_from_face(face.a, face.b, face.c);
+    return {{tetra0, ObjectType::Tetrahedron}};
+}
+
+unsigned int add_ground() {
+    PolyObject ground;
+    auto meshs = ground_mesh();
+    for (int i = 0; i < meshs.size(); ++i) {
+        auto [mesh, type] = meshs[i];
+        TetraOcta part = make_tetra_or_octa(mesh, type);
+        world.tetraoctas.push_back(part);
+        ground.parts.push_back(world.tetraoctas.size() - 1);
+    }
+    world.objects.push_back(ground);
+    return world.objects.size() - 1;
+}
+
 void display() {
     glClearColor(0.1, 0.1, 0.1, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -41,12 +68,10 @@ void display() {
     camera::draw();
 }
 
-
-
 void update(float dt) {
     update(world.camera, dt);
     if (world.editor) {
-        editor::mouse_pick();
+        editor::update(dt);
     }
     teleportation::update_target();
 }
@@ -72,8 +97,9 @@ void init() {
     //    auto cube = make_cube(5);
     //    world.rectangles.push_back({cube});
 
-    world.tetraoctas = {make_tetra()};
+    //    world.tetraoctas = {make_tetra()};
     //    world.tetraoctas = {make_octa()};
+    add_ground();
     world.axes = make_axes();
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);

@@ -116,10 +116,10 @@ SelectedFace find_selected_face(const Ray &ray) {
 
 TetraOcta object_from_face(const TetraOcta &obj, int face_index, ObjectType type) {
     Vec3 v0 = obj.mesh.vertices[face_index * 3];
-    Vec3 v1 = obj.mesh.vertices[face_index * 3 + 1];
-    Vec3 v2 = obj.mesh.vertices[face_index * 3 + 2];
+    Vec3 v2 = obj.mesh.vertices[face_index * 3 + 1];
+    Vec3 v1 = obj.mesh.vertices[face_index * 3 + 2];
     Mesh mesh =
-        type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2) : octa_from_face(v0, v2, v1);
+        type == ObjectType::Tetrahedron ? tetra_from_face(v0, v1, v2) : octa_from_face(v0, v1, v2);
     return make_tetra_or_octa(mesh, type);
 }
 
@@ -139,6 +139,10 @@ void mouse_pick() {
             world.editor->phantom_object = std::nullopt;
         }
     }
+}
+
+void update(float dt) {
+    mouse_pick();
 }
 
 void undo() { action_system.undo(); }

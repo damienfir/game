@@ -35,8 +35,16 @@ Mesh tetra_from_face(Vec3 a, Vec3 b, Vec3 c) {
     Vec3 center = (a + b + c) / 3.f;
     float edge_length = norm(c - a);
     float height = edge_length * std::sqrt(6.f) / 3.f;
-    Vec3 d = center + n * height;
-    return tetra_mesh(a, c, b, d);
+    Vec3 d = center - n * height;
+    return tetra_mesh(a, b, c, d);
+}
+
+Face face_from_line(Vec3 a, Vec3 b, Vec3 normal) {
+    Vec3 middle = (a + b) / 2.f;
+    float height = norm(a - b) * std::sqrt(3.f) / 2.f;
+    Vec3 dir = normalize(cross(a - b, normal));
+    Vec3 c = middle + dir * height;
+    return {a, b, c};
 }
 
 Mesh octa_mesh(Vec3 top, Vec3 bottom, Vec3 front, Vec3 back, Vec3 left, Vec3 right) {
