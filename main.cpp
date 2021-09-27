@@ -8,41 +8,172 @@
 #include "axes.h"
 #include "buffer.h"
 #include "logging.h"
-#include "mesh.h"
-#include "objects.h"
+#include "mesh2.h"
+#include "physics.h"
 #include "timer.h"
-#include "world.h"
 
-template <typename A, typename B> struct Pair {
-    A a;
-    B b;
+struct RenderControls {
+    bool wireframe = false;
+    bool draw_axes = true;
 };
 
-std::vector<Pair<Mesh, ObjectType>> ground_mesh() {
-    Vec3 a0 = {0, 0, 0};
-    Vec3 b0 = {1, 0, 0};
-    Vec3 normal0 = {0, -1, 0};
-    Face face = face_from_line(a0, b0, normal0);
-    Mesh tetra0 = tetra_from_face(face.a, face.b, face.c);
-    return {{tetra0, ObjectType::Tetrahedron}};
+struct Teleportation {
+    bool visualize;
+    Vec3 target;
+};
+
+struct Entity {
+    Mesh mesh;
+    BasicRenderingBuffer rendering;
+    Vec3 color;
+    Mat4 transform;
+};
+
+struct World {
+    Entity floor;
+    std::vector<Entity> entities;
+    Teleportation teleportation;
+    Camera camera;
+    Axes axes;
+    RenderControls render_controls;
+};
+
+World world;
+
+Entity make_floor() {
+    Entity body;
+    body.mesh = floor_mesh(100, 100);
+    body.color = {0.2, 0.2, 0.2};
+    body.transform = eye();
+    body.rendering = init_rendering(body.mesh);
+    return body;
 }
 
-unsigned int add_ground() {
-    PolyObject ground;
-    auto meshs = ground_mesh();
-    for (int i = 0; i < meshs.size(); ++i) {
-        auto [mesh, type] = meshs[i];
-        TetraOcta part = make_tetra_or_octa(mesh, type);
-        world.tetraoctas.push_back(part);
-        ground.parts.push_back(world.tetraoctas.size() - 1);
+Entity make_entity(Mesh mesh) {
+    Entity body;
+    body.mesh = mesh;
+    body.color = {0.5, 0.2, 0.5};
+    body.transform = eye();
+    body.rendering = init_rendering(mesh);
+    return body;
+}
+
+void initiate_teleportation() { world.teleportation.visualize = true; }
+
+void update_teleportation() {
+    if (world.teleportation.visualize) {
+        world.teleportation.target = world.camera.position() + world.camera.direction() * 10;
     }
-    world.objects.push_back(ground);
-    return world.objects.size() - 1;
+}
+
+void confirm_teleportation() {
+    world.teleportation.visualize = false;
+    world.camera.set_position(world.teleportation.target);
+}
+
+void draw_floor() {
+    RenderingParameters param = {.color = world.floor.color,
+                                 .model_transform = world.floor.transform,
+                                 .view_transform = world.camera.view(),
+                                 .perspective_transform = world.camera.projection(),
+                                 .camera_position = world.camera.position()};
+    draw(world.floor.rendering, param);
+}
+
+void draw_entities() {
+    for (Entity &entity : world.entities) {
+        RenderingParameters param = {.color = entity.color,
+                                     .model_transform = entity.transform,
+                                     .view_transform = world.camera.view(),
+                                     .perspective_transform = world.camera.projection(),
+                                     .camera_position = world.camera.position()};
+        draw(entity.rendering, param);
+    }
+}
+
+void draw_middle_point() {
+    glPointSize(5);
+    glBegin(GL_POINTS);
+    glColor3d(1, 1, 1);
+    glVertex3d(0, 0, 0);
+    glEnd();
+}
+
+void update_camera_position(Camera &camera, float dt) {
+    Vec3 velocity;
+
+    if (camera.controls.move_right) {
+        velocity = camera.move_horizontal();
+    } else if (camera.controls.move_left) {
+        velocity = 0 - camera.move_horizontal();
+    }
+
+    if (camera.controls.move_backwards) {
+        velocity -= camera.move_towards_restricted();
+    } else if (camera.controls.move_forward) {
+        velocity += camera.move_towards_restricted();
+    }
+
+    if (camera.controls.move_up) {
+        velocity += camera.move_vertical();
+    } else if (camera.controls.move_down) {
+        velocity -= camera.move_vertical();
+    }
+
+    if (camera.controls.move_faster)
+        velocity *= 2.f;
+
+    velocity.y -= 100 * dt; // Fake gravity, should accumulate
+    velocity *= dt;
+
+    float radius = 0.3;
+    if (norm(velocity) > 0) {
+        for (int entity_index = 0; entity_index < world.entities.size(); ++entity_index) {
+            const Entity &entity = world.entities[entity_index];
+            for (int face_index = 0; face_index < entity.mesh.vertices.size() / 3; ++face_index) {
+                Vec3 position = camera.position() + velocity;
+                Vec3 v0 = entity.transform * entity.mesh.vertices[face_index * 3];
+                Vec3 v1 = entity.transform * entity.mesh.vertices[face_index * 3 + 1];
+                Vec3 v2 = entity.transform * entity.mesh.vertices[face_index * 3 + 2];
+                Vec3 n = entity.mesh.normals[face_index * 3];
+
+                Vec3 face_center = centroid(v0, v1, v2);
+                float circumsphere_radius = norm(v0 - face_center);
+                if (norm(position - face_center) < circumsphere_radius) {
+                    Vec3 p0 = position - v0;
+                    Vec3 p1 = position - v1;
+                    Vec3 p2 = position - v2;
+                    if (dot(p0, v1 - v0) > 0 && dot(p1, v2 - v1) > 0 && dot(p2, v0 - v2) > 0) {
+                        float distance = dot(p0, n);
+                        if (distance - radius < 0 &&
+                            distance > 0 // Assumption that we will never be inside an object...
+                        ) {
+                            velocity -= n * (distance - radius);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //    float viewer_height = 1.f;
+    //    float terrain_height = 0;
+    //    Vec3 new_position = camera.position() + velocity;
+    //    new_position.y = viewer_height + terrain_height;
+    camera.set_position(camera.position() + velocity);
+}
+
+void update_fpv_view(Camera &camera) {
+    camera.rotate_direction(camera.controls.dx, camera.controls.dy);
+    camera.controls.dx = 0;
+    camera.controls.dy = 0;
 }
 
 void display() {
-    glClearColor(0.1, 0.1, 0.1, 1.0);
+    glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    draw_floor();
 
     if (world.render_controls.draw_axes) {
         draw(world.axes, world.camera);
@@ -52,28 +183,27 @@ void display() {
     //        draw(rect.rendering, rect.obj, world.camera);
     //    }
 
-    for (int i = 0; i < world.tetraoctas.size(); ++i) {
-        SolidObjectProperties obj = world.tetraoctas[i].obj;
-        if (world.editor && i == world.editor->selected.target_index) {
-            obj.highlighted_face = world.editor->selected.face_index;
-        }
-        draw(world.tetraoctas[i].rendering, obj, world.camera);
-    }
+    //    for (int i = 0; i < world.tetraoctas.size(); ++i) {
+    //        SolidObjectProperties obj = world.tetraoctas[i].obj;
+    //        if (world.editor && i == world.editor->selected.target_index) {
+    //            obj.highlighted_face = world.editor->selected.face_index;
+    //        }
+    //        draw(world.tetraoctas[i].rendering, obj, world.camera);
+    //    }
 
-    if (world.editor && world.editor->phantom_object) {
-        TetraOcta object = *world.editor->phantom_object;
-        draw(object.rendering, object.obj, world.camera);
-    }
+    //    if (world.editor && world.editor->phantom_object) {
+    //        TetraOcta object = *world.editor->phantom_object;
+    //        draw(object.rendering, object.obj, world.camera);
+    //    }
 
-    camera::draw();
+    draw_entities();
+    draw_middle_point();
 }
 
 void update(float dt) {
-    update(world.camera, dt);
-    if (world.editor) {
-        editor::update(dt);
-    }
-    teleportation::update_target();
+    update_camera_position(world.camera, dt);
+    update_fpv_view(world.camera);
+    update_teleportation();
 }
 
 void init() {
@@ -97,10 +227,15 @@ void init() {
     //    auto cube = make_cube(5);
     //    world.rectangles.push_back({cube});
 
-    //    world.tetraoctas = {make_tetra()};
-    //    world.tetraoctas = {make_octa()};
-    add_ground();
+    world.entities.push_back(make_floor());
+
+    Entity rect1 = make_entity(rectangle_mesh(2, 1, 2));
+    rect1.color = {0.1, 0.7, 0.2};
+    world.entities.push_back(rect1);
+
+    //    world.floor = make_floor();
     world.axes = make_axes();
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -186,17 +321,17 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         world.render_controls.draw_axes = !world.render_controls.draw_axes;
     }
 
-    if (key == GLFW_KEY_F1 && action == GLFW_PRESS) {
-        if (world.editor) {
-            world.editor = std::nullopt;
-        } else {
-            world.editor = Editor{};
-        }
-    }
-
-    if (world.editor) {
-        editor::keyboard_input(key, action);
-    }
+    //    if (key == GLFW_KEY_F1 && action == GLFW_PRESS) {
+    //        if (world.editor) {
+    //            world.editor = std::nullopt;
+    //        } else {
+    //            world.editor = Editor{};
+    //        }
+    //    }
+    //
+    //    if (world.editor) {
+    //        editor::keyboard_input(key, action);
+    //    }
 }
 
 struct MouseDelta {
@@ -237,17 +372,17 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
 }
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
-    if (world.editor) {
-        editor::mouse_button_input(button, action);
-    } else {
-        if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            if (action == GLFW_PRESS) {
-                teleportation::initiate();
-            } else if (action == GLFW_RELEASE) {
-                teleportation::confirm();
-            }
+    //    if (world.editor) {
+    //        editor::mouse_button_input(button, action);
+    //    } else {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            initiate_teleportation();
+        } else if (action == GLFW_RELEASE) {
+            confirm_teleportation();
         }
     }
+    //    }
 }
 
 class FPSCounter {

@@ -53,11 +53,3 @@ class Camera {
     float m_faster_factor;
     float m_sensitivity;
 };
-
-void update(Camera &camera, float dt);
-
-namespace camera {
-
-void draw();
-
-}

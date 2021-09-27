@@ -2,9 +2,8 @@
 
 #include "camera.h"
 #include "maths.h"
-#include "mesh.h"
+#include "mesh2.h"
 #include "shader.h"
-#include <GL/glew.h>
 
 struct BasicRenderingBuffer {
     unsigned int VAO{};
@@ -14,25 +13,30 @@ struct BasicRenderingBuffer {
     int n_vertices{};
 };
 
-struct SolidObjectProperties {
+struct RenderingParameters {
     Vec3 color;
-    Mat4 transform;
-    int highlighted_face{-1};
-    float alpha{1};
+    Mat4 model_transform;
+    Mat4 view_transform;
+    Mat4 perspective_transform;
+    Vec3 camera_position;
 };
 
-struct Rectangle {
-    float width;
-    float height;
-    float depth;
-    Vec3 center;
-    Mesh mesh;
-    SolidObjectProperties obj;
-    BasicRenderingBuffer rendering;
-};
+// struct SolidObjectProperties {
+//     Vec3 color;
+//     Mat4 transform;
+// };
 
-void draw(const BasicRenderingBuffer &buffer, const SolidObjectProperties &obj,
-          const Camera &camera);
+// struct Rectangle {
+//     float width;
+//     float height;
+//     float depth;
+//     Vec3 center;
+//     Mesh mesh;
+//     SolidObjectProperties obj;
+//     BasicRenderingBuffer rendering;
+// };
+
+void draw(const BasicRenderingBuffer &buffer, const RenderingParameters &param);
 
 BasicRenderingBuffer init_rendering(const Mesh &mesh);
 
@@ -40,6 +44,6 @@ BasicRenderingBuffer init_rendering(const Mesh &mesh);
 
 // Buffer make_surface(int rows, int cols);
 
-Rectangle make_rectangle(float width, float height, float depth);
-
-Rectangle make_cube(float size);
+// Rectangle make_rectangle(float width, float height, float depth);
+//
+// Rectangle make_cube(float size);

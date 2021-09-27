@@ -1,6 +1,7 @@
 #include "buffer.h"
 
 #include "logging.h"
+#include "mesh2.h"
 #include <GL/glew.h>
 
 template <typename T> long byte_size(const std::vector<T> &vector) {
@@ -22,20 +23,15 @@ std::vector<float> pack_vertices_and_normals(const std::vector<Vec3> &vertices,
     return data;
 }
 
-
-
-void draw(const BasicRenderingBuffer &buffer, const SolidObjectProperties &obj,
-          const Camera &camera) {
+void draw(const BasicRenderingBuffer &buffer, const RenderingParameters &param) {
     UseShader use(buffer.shader.program);
     glBindVertexArray(buffer.VAO);
 
-    set_matrix4(buffer.shader, "model", obj.transform);
-    set_matrix4(buffer.shader, "view", camera.view());
-    set_matrix4(buffer.shader, "projection", camera.projection());
-    set_vec3(buffer.shader, "color", obj.color);
-    set_vec3(buffer.shader, "viewer_pos", camera.position());
-    set_int(buffer.shader, "highlighted_face", obj.highlighted_face);
-    set_float(buffer.shader, "alpha", obj.alpha);
+    set_matrix4(buffer.shader, "model", param.model_transform);
+    set_matrix4(buffer.shader, "view", param.view_transform);
+    set_matrix4(buffer.shader, "projection", param.perspective_transform);
+    set_vec3(buffer.shader, "color", param.color);
+    set_vec3(buffer.shader, "viewer_pos", param.camera_position);
 
     glDrawArrays(GL_TRIANGLES, 0, buffer.n_vertices);
     glBindVertexArray(0);
@@ -77,7 +73,6 @@ void draw(const BasicRenderingBuffer &buffer, const SolidObjectProperties &obj,
 //     return buffer;
 // }
 
-
 BasicRenderingBuffer init_rendering(const Mesh &mesh) {
     std::vector<float> data = pack_vertices_and_normals(mesh.vertices, mesh.normals);
 
@@ -97,26 +92,20 @@ BasicRenderingBuffer init_rendering(const Mesh &mesh) {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    glBindBuffer(GL_ARRAY_BUFFER, buffer.VBO_face_indices);
-    glBufferData(GL_ARRAY_BUFFER, byte_size(mesh.face_indices), mesh.face_indices.data(),
-                 GL_STATIC_DRAW);
-    glVertexAttribIPointer(2, 1, GL_INT, 0, (void *)0);
-    glEnableVertexAttribArray(2);
-
     return buffer;
 }
 
-Rectangle make_rectangle(float width, float height, float depth) {
-    Rectangle rect;
-    rect.width = width;
-    rect.height = height;
-    rect.depth = depth;
-    rect.obj.transform = eye();
-    rect.center = {0, 0, 0};
-    rect.obj.color = {0.1, 0.4, 0.3};
-    rect.mesh = rectangle_mesh(width, height, depth);
-    rect.rendering = init_rendering(rect.mesh);
-    return rect;
-}
-
-Rectangle make_cube(float size) { return make_rectangle(size, size, size); }
+// Rectangle make_rectangle(float width, float height, float depth) {
+//     Rectangle rect;
+//     rect.width = width;
+//     rect.height = height;
+//     rect.depth = depth;
+//     rect.obj.transform = eye();
+//     rect.center = {0, 0, 0};
+//     rect.obj.color = {0.1, 0.4, 0.3};
+//     rect.mesh = rectangle_mesh(width, height, depth);
+//     rect.rendering = init_rendering(rect.mesh);
+//     return rect;
+// }
+//
+// Rectangle make_cube(float size) { return make_rectangle(size, size, size); }

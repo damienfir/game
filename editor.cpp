@@ -4,10 +4,11 @@
 #include <optional>
 
 #include "maths.h"
-#include "mesh.h"
+#include "mesh2.h"
 #include "objects.h"
 #include "undoredo.h"
 #include "world.h"
+#include "logging.h"
 
 namespace editor {
 
@@ -129,6 +130,7 @@ void mouse_pick() {
         select_face(find_selected_face(ray));
 
         if (world.editor->selected.target_index != -1) {
+            log(world.editor->selected.face_index);
             TetraOcta obj =
                 object_from_face(world.tetraoctas[world.editor->selected.target_index],
                                  world.editor->selected.face_index, world.editor->target_type);
@@ -141,9 +143,7 @@ void mouse_pick() {
     }
 }
 
-void update(float dt) {
-    mouse_pick();
-}
+void update(float dt) { mouse_pick(); }
 
 void undo() { action_system.undo(); }
 

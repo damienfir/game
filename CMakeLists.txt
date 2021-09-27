@@ -13,11 +13,10 @@ add_executable(game
                logging.cpp
                maths.cpp
                camera.cpp
-               mesh.cpp
                axes.cpp
-               editor.cpp
-               objects.cpp
-               world.cpp
-               teleportation.cpp
-               physics.cpp)
+#               editor.cpp
+#               world.cpp
+#               teleportation.cpp
+               physics.cpp
+               mesh2.cpp)
 target_link_libraries(game glfw GLEW OpenGL::GL)

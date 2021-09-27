@@ -12,4 +12,4 @@ struct IntersectData {
     Vec3 normal;
 };
 
-IntersectData intersect_tetras_point(Sphere sphere);
+//IntersectData intersect_tetras_point(Sphere sphere);
