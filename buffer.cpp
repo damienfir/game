@@ -32,6 +32,7 @@ void draw(const BasicRenderingBuffer &buffer, const RenderingParameters &param) 
     set_matrix4(buffer.shader, "projection", param.perspective_transform);
     set_vec3(buffer.shader, "color", param.color);
     set_vec3(buffer.shader, "viewer_pos", param.camera_position);
+    set_int(buffer.shader, "show_normals", param.show_normals);
 
     glDrawArrays(GL_TRIANGLES, 0, buffer.n_vertices);
     glBindVertexArray(0);

@@ -12,9 +12,10 @@
 #include "physics.h"
 #include "timer.h"
 
-struct RenderControls {
+struct DebugControls {
     bool wireframe = false;
     bool draw_axes = true;
+    bool show_normals = false;
 };
 
 struct Teleportation {
@@ -30,12 +31,12 @@ struct Entity {
 };
 
 struct World {
-    Entity floor;
+    //    Entity floor;
     std::vector<Entity> entities;
     Teleportation teleportation;
     Camera camera;
     Axes axes;
-    RenderControls render_controls;
+    DebugControls debug_controls;
 };
 
 World world;
@@ -60,25 +61,85 @@ Entity make_entity(Mesh mesh) {
 
 void initiate_teleportation() { world.teleportation.visualize = true; }
 
+struct Ray {
+    Vec3 origin;
+    Vec3 direction;
+};
+
+Vec3 find_point_on_object(const Ray &ray) {
+    Vec3 target;
+    float min_t = std::numeric_limits<float>::max();
+    for (int i = 0; i < world.entities.size(); ++i) {
+        Mesh mesh = world.entities[i].mesh;
+        int n_faces = mesh.vertices.size() / 3;
+        for (int face_index = 0; face_index < n_faces; ++face_index) {
+            // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
+            Vec3 normal = mesh.normals[face_index * 3];
+            if (dot(normal, ray.direction) >= 0) {
+                // triangle is facing away from ray
+                continue;
+            }
+
+            Vec3 v0 = mesh.vertices[face_index * 3];
+            Vec3 v1 = mesh.vertices[face_index * 3 + 1];
+            Vec3 v2 = mesh.vertices[face_index * 3 + 2];
+
+            auto plane_distance = dot(normal, v0);
+            float t = -(dot(normal, ray.origin) - plane_distance) / dot(normal, ray.direction);
+            if (t <= 0) {
+                // triangle is behind the ray
+                continue;
+            }
+
+            Vec3 point_intersect = ray.origin + ray.direction * t;
+            Vec3 e0 = v1 - v0;
+            Vec3 e1 = v2 - v1;
+            Vec3 e2 = v0 - v2;
+            Vec3 c0 = point_intersect - v0;
+            Vec3 c1 = point_intersect - v1;
+            Vec3 c2 = point_intersect - v2;
+            if (dot(normal, cross(e0, c0)) > 0 && dot(normal, cross(e1, c1)) > 0 &&
+                dot(normal, cross(e2, c2)) > 0) {
+                // point is inside the triangle
+                if (t < min_t) {
+                    min_t = t;
+                    target = point_intersect;
+                }
+            }
+        }
+    }
+    log(string(target));
+    return target;
+}
+
 void update_teleportation() {
     if (world.teleportation.visualize) {
-        world.teleportation.target = world.camera.position() + world.camera.direction() * 10;
+        //        world.teleportation.target = world.camera.position() + world.camera.direction() *
+        //        10;
+        Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
+        world.teleportation.target = find_point_on_object(ray);
     }
 }
 
 void confirm_teleportation() {
     world.teleportation.visualize = false;
-    world.camera.set_position(world.teleportation.target);
+    //    world.camera.set_position(world.teleportation.target);
 }
 
-void draw_floor() {
-    RenderingParameters param = {.color = world.floor.color,
-                                 .model_transform = world.floor.transform,
-                                 .view_transform = world.camera.view(),
-                                 .perspective_transform = world.camera.projection(),
-                                 .camera_position = world.camera.position()};
-    draw(world.floor.rendering, param);
+void draw_teleportation() {
+    if (world.teleportation.visualize) {
+        //        log(string(world.teleportation.target));
+    }
 }
+
+// void draw_floor() {
+//     RenderingParameters param = {.color = world.floor.color,
+//                                  .model_transform = world.floor.transform,
+//                                  .view_transform = world.camera.view(),
+//                                  .perspective_transform = world.camera.projection(),
+//                                  .camera_position = world.camera.position()};
+//     draw(world.floor.rendering, param);
+// }
 
 void draw_entities() {
     for (Entity &entity : world.entities) {
@@ -86,7 +147,8 @@ void draw_entities() {
                                      .model_transform = entity.transform,
                                      .view_transform = world.camera.view(),
                                      .perspective_transform = world.camera.projection(),
-                                     .camera_position = world.camera.position()};
+                                     .camera_position = world.camera.position(),
+                                     .show_normals = world.debug_controls.show_normals};
         draw(entity.rendering, param);
     }
 }
@@ -123,7 +185,7 @@ void update_camera_position(Camera &camera, float dt) {
     if (camera.controls.move_faster)
         velocity *= 2.f;
 
-    velocity.y -= 100 * dt; // Fake gravity, should accumulate
+    //    velocity.y -= 100 * dt; // Fake gravity, should accumulate
     velocity *= dt;
 
     float radius = 0.3;
@@ -156,10 +218,6 @@ void update_camera_position(Camera &camera, float dt) {
         }
     }
 
-    //    float viewer_height = 1.f;
-    //    float terrain_height = 0;
-    //    Vec3 new_position = camera.position() + velocity;
-    //    new_position.y = viewer_height + terrain_height;
     camera.set_position(camera.position() + velocity);
 }
 
@@ -173,9 +231,9 @@ void display() {
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    draw_floor();
+    //    draw_floor();
 
-    if (world.render_controls.draw_axes) {
+    if (world.debug_controls.draw_axes) {
         draw(world.axes, world.camera);
     }
 
@@ -198,6 +256,7 @@ void display() {
 
     draw_entities();
     draw_middle_point();
+    draw_teleportation();
 }
 
 void update(float dt) {
@@ -229,7 +288,11 @@ void init() {
 
     world.entities.push_back(make_floor());
 
-    Entity rect1 = make_entity(rectangle_mesh(2, 1, 2));
+    Mesh rect = rectangle_mesh(2, 1, 2);
+    Mat4 T = translate(eye(), {0, 1, 0});
+    for (Vec3 &v : rect.vertices)
+        v = T * v;
+    Entity rect1 = make_entity(rect);
     rect1.color = {0.1, 0.7, 0.2};
     world.entities.push_back(rect1);
 
@@ -309,8 +372,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 
     if (key == GLFW_KEY_BACKSLASH && action == GLFW_PRESS) {
-        world.render_controls.wireframe = !world.render_controls.wireframe;
-        if (world.render_controls.wireframe) {
+        world.debug_controls.wireframe = !world.debug_controls.wireframe;
+        if (world.debug_controls.wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         } else {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -318,7 +381,11 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 
     if (key == GLFW_KEY_SLASH && action == GLFW_PRESS) {
-        world.render_controls.draw_axes = !world.render_controls.draw_axes;
+        world.debug_controls.draw_axes = !world.debug_controls.draw_axes;
+    }
+
+    if (key == GLFW_KEY_N && action == GLFW_PRESS) {
+        world.debug_controls.show_normals = !world.debug_controls.show_normals;
     }
 
     //    if (key == GLFW_KEY_F1 && action == GLFW_PRESS) {

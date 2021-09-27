@@ -3,6 +3,7 @@
 
 uniform vec3 color;
 uniform vec3 viewer_pos;
+uniform int show_normals;
 
 in vec3 normal;
 in vec3 pos;
@@ -33,5 +34,10 @@ void main(void) {
     vec3 specular = 0.2 * spec * light_color;
 
     //    float noise = rand(pos.xy) * 0.2;
+    if (show_normals > 0) {
+        vec3 nor = (normal + 1.f) / 2.f;
+        FragColor = vec4(nor, 1.0);
+    } else {
         FragColor = vec4((ambient + diffuse + specular) * color, 1);
+    }
 }

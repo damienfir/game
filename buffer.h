@@ -19,6 +19,7 @@ struct RenderingParameters {
     Mat4 view_transform;
     Mat4 perspective_transform;
     Vec3 camera_position;
+    bool show_normals;
 };
 
 // struct SolidObjectProperties {
