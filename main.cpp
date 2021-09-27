@@ -123,7 +123,7 @@ void update_teleportation() {
 
 void confirm_teleportation() {
     world.teleportation.visualize = false;
-    //    world.camera.set_position(world.teleportation.target);
+    world.camera.set_position(world.teleportation.target + Vec3{0, 1, 0});
 }
 
 void draw_teleportation() {
@@ -148,7 +148,9 @@ void draw_entities() {
                                      .view_transform = world.camera.view(),
                                      .perspective_transform = world.camera.projection(),
                                      .camera_position = world.camera.position(),
-                                     .show_normals = world.debug_controls.show_normals};
+                                     .show_normals = world.debug_controls.show_normals,
+                                     .teleportation_target = world.teleportation.target,
+                                     .show_teleportation = world.teleportation.visualize};
         draw(entity.rendering, param);
     }
 }
@@ -188,7 +190,7 @@ void update_camera_position(Camera &camera, float dt) {
     //    velocity.y -= 100 * dt; // Fake gravity, should accumulate
     velocity *= dt;
 
-    float radius = 0.3;
+    float radius = 1;
     if (norm(velocity) > 0) {
         for (int entity_index = 0; entity_index < world.entities.size(); ++entity_index) {
             const Entity &entity = world.entities[entity_index];
@@ -255,7 +257,7 @@ void display() {
     //    }
 
     draw_entities();
-//    draw_middle_point();
+    //    draw_middle_point();
     draw_teleportation();
 }
 

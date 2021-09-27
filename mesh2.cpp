@@ -22,20 +22,25 @@ std::vector<Vec3> compute_normals(const std::vector<Vec3> &vertices) {
 
 Mesh floor_mesh(int rows, int cols) {
     Mesh mesh;
-    Vec3 translation = {-50, 0, -50};
+    Vec3 translation = {-50, 0, 50};
     for (int i = 0; i < rows - 1; ++i) {
         for (int j = 0; j < cols - 1; ++j) {
             float ii = i;
             float jj = j;
-            std::vector<Vec3> vertices = {{ii, 0, jj},     {ii + 1, 0, jj}, {ii, 0, jj + 1},
-                                          {ii, 0, jj + 1}, {ii + 1, 0, jj}, {ii + 1, 0, jj + 1}};
-
-            for (auto v : vertices) {
-                mesh.vertices.push_back(v + translation);
-                mesh.normals.push_back({0, 1, 0});
-            }
+            Vec3 v0 = {ii, 0, -jj};
+            Vec3 v1 = {ii + 1, 0, -jj};
+            Vec3 v2 = {ii + 1, 0, -(jj + 1)};
+            Vec3 v3 = {ii, 0, -(jj + 1)};
+            mesh.vertices.push_back(v0 + translation);
+            mesh.vertices.push_back(v1 + translation);
+            mesh.vertices.push_back(v3 + translation);
+            mesh.vertices.push_back(v3 + translation);
+            mesh.vertices.push_back(v1 + translation);
+            mesh.vertices.push_back(v2 + translation);
         }
     }
+
+    mesh.normals = compute_normals(mesh.vertices);
 
     return mesh;
 }
