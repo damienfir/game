@@ -105,10 +105,10 @@ Vec3 find_point_on_object(const Ray &ray) {
                     min_t = t;
                     target = point_intersect;
                 }
+            } else {
             }
         }
     }
-    log(string(target));
     return target;
 }
 
@@ -128,7 +128,7 @@ void confirm_teleportation() {
 
 void draw_teleportation() {
     if (world.teleportation.visualize) {
-        //        log(string(world.teleportation.target));
+        log(string(world.teleportation.target));
     }
 }
 
@@ -255,7 +255,7 @@ void display() {
     //    }
 
     draw_entities();
-    draw_middle_point();
+//    draw_middle_point();
     draw_teleportation();
 }
 
