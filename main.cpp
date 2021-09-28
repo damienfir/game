@@ -300,8 +300,7 @@ void editor_update_selected() {
     int selected = world.editor.selected;
     if (selected >= 0) {
         Entity entity = world.entities[selected];
-        auto intersection =
-            find_point_on_object(ray_from_mouse(), {selected});
+        auto intersection = find_point_on_object(ray_from_mouse(), {selected});
         if (intersection) {
             Vec3 target = intersection->point;
             world.entities[selected].transform = translate(eye(), target);
@@ -330,8 +329,6 @@ void update_fpv_view(Camera &camera) {
 void display() {
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    //    draw_floor();
 
     if (world.debug_controls.draw_axes) {
         draw(world.axes, world.camera);

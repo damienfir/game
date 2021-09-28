@@ -7,7 +7,6 @@ Physics
 
 Mesh
 - Load simple mesh and display
-  - Handle all generic mesh, not only tetra/octa (too complicated to build anything with that)
 
 Engine
 - Separate the player and the camera
@@ -19,15 +18,12 @@ Geometry
 Game
 - Make a small world
   - Even generate automatically, like a floor
-- How to teleport on top of things you don't see. 
+- How to teleport on top of things you don't see. (maybe you shouldn't be able to)
 - Cancel a teleport
 
 Editor
 - Spawn new objects
-- Scale objects
-- Move objects
-  - Snap to existing objects
-  - Can move on top of another. When overlap, the moved one just goes on top.
+- Move objects on tiles
 - Move around viewing
 - More general mouse based UI
   - Fixed screen angle/view, move things with the mouse
