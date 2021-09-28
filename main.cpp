@@ -40,7 +40,6 @@ struct Editor {
     float mouse_pos_x;
     float mouse_pos_y;
     int selected = -1;
-    Vec3 selected_point;
 };
 
 struct World {
@@ -84,23 +83,33 @@ struct IntersectInfo {
     int entity_index;
 };
 
-std::optional<IntersectInfo> find_point_on_object(const Ray &ray) {
+template <typename T> bool contains(const std::vector<T> &v, const T &val) {
+    return std::find(std::begin(v), std::end(v), val) != std::end(v);
+}
+
+std::optional<IntersectInfo> find_point_on_object(const Ray &ray,
+                                                  const std::vector<int> &exclude = {}) {
     IntersectInfo info;
     float min_t = std::numeric_limits<float>::max();
     for (int i = 0; i < world.entities.size(); ++i) {
+        if (contains(exclude, i))
+            continue;
+
+        Mat4 model_transform = world.entities[i].transform;
+        Mat4 normal_transform = transpose(invert(model_transform));
         Mesh mesh = world.entities[i].mesh;
         int n_faces = mesh.vertices.size() / 3;
         for (int face_index = 0; face_index < n_faces; ++face_index) {
             // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
-            Vec3 normal = mesh.normals[face_index * 3];
+            Vec3 normal = normal_transform * mesh.normals[face_index * 3];
             if (dot(normal, ray.direction) >= 0) {
                 // triangle is facing away from ray
                 continue;
             }
 
-            Vec3 v0 = mesh.vertices[face_index * 3];
-            Vec3 v1 = mesh.vertices[face_index * 3 + 1];
-            Vec3 v2 = mesh.vertices[face_index * 3 + 2];
+            Vec3 v0 = model_transform * mesh.vertices[face_index * 3];
+            Vec3 v1 = model_transform * mesh.vertices[face_index * 3 + 1];
+            Vec3 v2 = model_transform * mesh.vertices[face_index * 3 + 2];
 
             auto plane_distance = dot(normal, v0);
             float t = -(dot(normal, ray.origin) - plane_distance) / dot(normal, ray.direction);
@@ -173,10 +182,10 @@ void draw_entities() {
                                      .show_normals = world.debug_controls.show_normals,
                                      .teleportation_target = world.teleportation.target,
                                      .show_teleportation = world.teleportation.visualize};
-        if (world.editor.enabled) {
-            param.teleportation_target = world.editor.selected_point;
-            param.show_teleportation = true;
-        }
+        //        if (world.editor.enabled) {
+        //            param.teleportation_target = world.editor.selected_point;
+        //            param.show_teleportation = true;
+        //        }
         draw(entity.rendering, param);
     }
 }
@@ -219,13 +228,15 @@ void update_camera_position(Camera &camera, float dt) {
     float radius = 0.3;
     if (norm(velocity) > 0) {
         for (int entity_index = 0; entity_index < world.entities.size(); ++entity_index) {
-            const Entity &entity = world.entities[entity_index];
-            for (int face_index = 0; face_index < entity.mesh.vertices.size() / 3; ++face_index) {
+            const Mesh &mesh = world.entities[entity_index].mesh;
+            Mat4 model_transform = world.entities[entity_index].transform;
+            Mat4 normal_transform = transpose(invert(model_transform));
+            for (int face_index = 0; face_index < mesh.vertices.size() / 3; ++face_index) {
                 Vec3 position = camera.position() + velocity;
-                Vec3 v0 = entity.transform * entity.mesh.vertices[face_index * 3];
-                Vec3 v1 = entity.transform * entity.mesh.vertices[face_index * 3 + 1];
-                Vec3 v2 = entity.transform * entity.mesh.vertices[face_index * 3 + 2];
-                Vec3 n = entity.mesh.normals[face_index * 3];
+                Vec3 v0 = model_transform * mesh.vertices[face_index * 3];
+                Vec3 v1 = model_transform * mesh.vertices[face_index * 3 + 1];
+                Vec3 v2 = model_transform * mesh.vertices[face_index * 3 + 2];
+                Vec3 n = normal_transform * mesh.normals[face_index * 3];
 
                 Vec3 face_center = centroid(v0, v1, v2);
                 float circumsphere_radius = norm(v0 - face_center);
@@ -279,11 +290,26 @@ Ray ray_from_camera() {
 }
 
 void editor_update_selected() {
-    auto intersection = find_point_on_object(ray_from_camera());
-    if (intersection) {
-        world.editor.selected_point = intersection->point;
+    int selected = world.editor.selected;
+    if (selected >= 0) {
+        auto intersection = find_point_on_object(ray_from_camera(), {selected});
+        if (intersection) {
+            Vec3 target = intersection->point;
+            world.entities[selected].transform = translate(eye(), {target});
+        }
     }
 }
+
+void editor_initiate_move() {
+    auto intersection = find_point_on_object(ray_from_camera());
+    if (intersection) {
+        world.editor.selected = intersection->entity_index;
+    } else {
+        world.editor.selected = -1;
+    }
+}
+
+void editor_confirm_move() { world.editor.selected = -1; }
 
 void update_fpv_view(Camera &camera) {
     camera.rotate_direction(camera.controls.dx, camera.controls.dy);
@@ -348,12 +374,9 @@ void init() {
 
     world.entities.push_back(make_floor());
 
-    Mesh rect = rectangle_mesh(2, 1, 2);
-    Mat4 T = translate(eye(), {0, 1, 0});
-    for (Vec3 &v : rect.vertices)
-        v = T * v;
-    Entity rect1 = make_entity(rect);
+    Entity rect1 = make_entity(rectangle_mesh(2, 1, 2));
     rect1.color = {0.1, 0.7, 0.2};
+    rect1.transform = translate(eye(), {0, 1, 0});
     world.entities.push_back(rect1);
 
     //    world.floor = make_floor();
@@ -510,7 +533,13 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
     if (world.editor.enabled) {
-
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            if (action == GLFW_PRESS) {
+                editor_initiate_move();
+            } else {
+                editor_confirm_move();
+            }
+        }
     } else {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             if (action == GLFW_PRESS) {
