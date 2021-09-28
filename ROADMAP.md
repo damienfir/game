@@ -19,10 +19,20 @@ Geometry
 Game
 - Make a small world
   - Even generate automatically, like a floor
-- See where the user will teleport
+- How to teleport on top of things you don't see. 
+- Cancel a teleport
 
 Editor
-
+- Spawn new objects
+- Scale objects
+- Move objects
+  - Snap to existing objects
+  - Can move on top of another. When overlap, the moved one just goes on top.
+- Move around viewing
+- More general mouse based UI
+  - Fixed screen angle/view, move things with the mouse
+  - Turn around the scene using rotate OR FPV
+- Raise/lower ground
 
 Debugging
 - Visualize bounding boxes

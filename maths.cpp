@@ -122,6 +122,150 @@ Vec3 operator*(const Mat4 &A, const Vec3 &v) {
     return r;
 }
 
+Vec4 operator*(const Mat4 &A, const Vec4 &v) {
+    Vec4 r;
+    r.x = A.val(0, 0) * v.x + A.val(0, 1) * v.y + A.val(0, 2) * v.z + A.val(0, 3) * v.w;
+    r.y = A.val(1, 0) * v.x + A.val(1, 1) * v.y + A.val(1, 2) * v.z + A.val(1, 3) * v.w;
+    r.z = A.val(2, 0) * v.x + A.val(2, 1) * v.y + A.val(2, 2) * v.z + A.val(2, 3) * v.w;
+    r.w = A.val(3, 0) * v.x + A.val(3, 1) * v.y + A.val(3, 2) * v.z + A.val(3, 3) * v.w;
+    return r;
+}
+
+Mat4 invert(const Mat4 &A) {
+    // Works for both column-major and row-major.
+    // inverse(transpose(A)) == transpose(inverse(A))
+    // https://stackoverflow.com/questions/1148309/inverting-a-4x4-matrix
+    auto m = A.m_values.data();
+    double inv[16], det;
+    int i;
+
+    // clang-format off
+    inv[0] = m[5]  * m[10] * m[15] -
+             m[5]  * m[11] * m[14] -
+             m[9]  * m[6]  * m[15] +
+             m[9]  * m[7]  * m[14] +
+             m[13] * m[6]  * m[11] -
+             m[13] * m[7]  * m[10];
+
+    inv[4] = -m[4]  * m[10] * m[15] +
+             m[4]  * m[11] * m[14] +
+             m[8]  * m[6]  * m[15] -
+             m[8]  * m[7]  * m[14] -
+             m[12] * m[6]  * m[11] +
+             m[12] * m[7]  * m[10];
+
+    inv[8] = m[4]  * m[9] * m[15] -
+             m[4]  * m[11] * m[13] -
+             m[8]  * m[5] * m[15] +
+             m[8]  * m[7] * m[13] +
+             m[12] * m[5] * m[11] -
+             m[12] * m[7] * m[9];
+
+    inv[12] = -m[4]  * m[9] * m[14] +
+              m[4]  * m[10] * m[13] +
+              m[8]  * m[5] * m[14] -
+              m[8]  * m[6] * m[13] -
+              m[12] * m[5] * m[10] +
+              m[12] * m[6] * m[9];
+
+    inv[1] = -m[1]  * m[10] * m[15] +
+             m[1]  * m[11] * m[14] +
+             m[9]  * m[2] * m[15] -
+             m[9]  * m[3] * m[14] -
+             m[13] * m[2] * m[11] +
+             m[13] * m[3] * m[10];
+
+    inv[5] = m[0]  * m[10] * m[15] -
+             m[0]  * m[11] * m[14] -
+             m[8]  * m[2] * m[15] +
+             m[8]  * m[3] * m[14] +
+             m[12] * m[2] * m[11] -
+             m[12] * m[3] * m[10];
+
+    inv[9] = -m[0]  * m[9] * m[15] +
+             m[0]  * m[11] * m[13] +
+             m[8]  * m[1] * m[15] -
+             m[8]  * m[3] * m[13] -
+             m[12] * m[1] * m[11] +
+             m[12] * m[3] * m[9];
+
+    inv[13] = m[0]  * m[9] * m[14] -
+              m[0]  * m[10] * m[13] -
+              m[8]  * m[1] * m[14] +
+              m[8]  * m[2] * m[13] +
+              m[12] * m[1] * m[10] -
+              m[12] * m[2] * m[9];
+
+    inv[2] = m[1]  * m[6] * m[15] -
+             m[1]  * m[7] * m[14] -
+             m[5]  * m[2] * m[15] +
+             m[5]  * m[3] * m[14] +
+             m[13] * m[2] * m[7] -
+             m[13] * m[3] * m[6];
+
+    inv[6] = -m[0]  * m[6] * m[15] +
+             m[0]  * m[7] * m[14] +
+             m[4]  * m[2] * m[15] -
+             m[4]  * m[3] * m[14] -
+             m[12] * m[2] * m[7] +
+             m[12] * m[3] * m[6];
+
+    inv[10] = m[0]  * m[5] * m[15] -
+              m[0]  * m[7] * m[13] -
+              m[4]  * m[1] * m[15] +
+              m[4]  * m[3] * m[13] +
+              m[12] * m[1] * m[7] -
+              m[12] * m[3] * m[5];
+
+    inv[14] = -m[0]  * m[5] * m[14] +
+              m[0]  * m[6] * m[13] +
+              m[4]  * m[1] * m[14] -
+              m[4]  * m[2] * m[13] -
+              m[12] * m[1] * m[6] +
+              m[12] * m[2] * m[5];
+
+    inv[3] = -m[1] * m[6] * m[11] +
+             m[1] * m[7] * m[10] +
+             m[5] * m[2] * m[11] -
+             m[5] * m[3] * m[10] -
+             m[9] * m[2] * m[7] +
+             m[9] * m[3] * m[6];
+
+    inv[7] = m[0] * m[6] * m[11] -
+             m[0] * m[7] * m[10] -
+             m[4] * m[2] * m[11] +
+             m[4] * m[3] * m[10] +
+             m[8] * m[2] * m[7] -
+             m[8] * m[3] * m[6];
+
+    inv[11] = -m[0] * m[5] * m[11] +
+              m[0] * m[7] * m[9] +
+              m[4] * m[1] * m[11] -
+              m[4] * m[3] * m[9] -
+              m[8] * m[1] * m[7] +
+              m[8] * m[3] * m[5];
+
+    inv[15] = m[0] * m[5] * m[10] -
+              m[0] * m[6] * m[9] -
+              m[4] * m[1] * m[10] +
+              m[4] * m[2] * m[9] +
+              m[8] * m[1] * m[6] -
+              m[8] * m[2] * m[5];
+    // clang-format on
+
+    det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+    assert(det != 0);
+
+    det = 1.0 / det;
+
+    Mat4 Ai;
+    for (i = 0; i < 16; i++)
+        Ai(i) = inv[i] * det;
+
+    return Ai;
+}
+
 Mat4 operator*(const Mat4 &A, const Mat4 &B) {
     assert(A.cols() == B.rows());
 
