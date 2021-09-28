@@ -33,6 +33,7 @@ struct Entity {
     BasicRenderingBuffer rendering;
     Vec3 color;
     Mat4 transform;
+    Vec3 origin;
 };
 
 struct Editor {
@@ -40,6 +41,7 @@ struct Editor {
     float mouse_pos_x;
     float mouse_pos_y;
     int selected = -1;
+    Vec3 selected_point;
 };
 
 struct World {
@@ -59,6 +61,7 @@ Entity make_floor() {
     body.color = {0.2, 0.2, 0.2};
     body.transform = eye();
     body.rendering = init_rendering(body.mesh);
+    body.origin = {0, 0, 0};
     return body;
 }
 
@@ -68,6 +71,7 @@ Entity make_entity(Mesh mesh) {
     body.color = {0.5, 0.2, 0.5};
     body.transform = eye();
     body.rendering = init_rendering(mesh);
+    body.origin = {0, 0, 0};
     return body;
 }
 
@@ -276,11 +280,9 @@ std::pair<float, float> screen_to_clip(float x, float y) {
     return {xd, yd};
 }
 
-Ray ray_from_camera() {
-    auto [xd, yd] = screen_to_clip(world.editor.mouse_pos_x, world.editor.mouse_pos_y);
-
+Ray ray_from_camera(float x, float y) {
     // https://antongerdelan.net/opengl/raycasting.html
-    Vec4 ray_clip = {xd, yd, -1.f, 1.f};
+    Vec4 ray_clip = {x, y, -1.f, 1.f};
     Vec4 ray_eye = invert(world.camera.projection()) * ray_clip;
     Vec4 ray_world = invert(world.camera.view()) * Vec4{ray_eye.x, ray_eye.y, -1.f, 0.f};
     Vec3 ray_dir = normalize({ray_world.x, ray_world.y, ray_world.z});
@@ -289,21 +291,29 @@ Ray ray_from_camera() {
     return ray;
 }
 
+Ray ray_from_mouse() {
+    auto [xd, yd] = screen_to_clip(world.editor.mouse_pos_x, world.editor.mouse_pos_y);
+    return ray_from_camera(xd, yd);
+}
+
 void editor_update_selected() {
     int selected = world.editor.selected;
     if (selected >= 0) {
-        auto intersection = find_point_on_object(ray_from_camera(), {selected});
+        Entity entity = world.entities[selected];
+        auto intersection =
+            find_point_on_object(ray_from_mouse(), {selected});
         if (intersection) {
             Vec3 target = intersection->point;
-            world.entities[selected].transform = translate(eye(), {target});
+            world.entities[selected].transform = translate(eye(), target);
         }
     }
 }
 
 void editor_initiate_move() {
-    auto intersection = find_point_on_object(ray_from_camera());
+    auto intersection = find_point_on_object(ray_from_mouse());
     if (intersection) {
         world.editor.selected = intersection->entity_index;
+        world.editor.selected_point = intersection->point;
     } else {
         world.editor.selected = -1;
     }
@@ -376,14 +386,13 @@ void init() {
 
     Entity rect1 = make_entity(rectangle_mesh(2, 1, 2));
     rect1.color = {0.1, 0.7, 0.2};
-    rect1.transform = translate(eye(), {3, 0, 0});
+    rect1.transform = translate(eye(), {1, 0, -2});
     world.entities.push_back(rect1);
 
     Entity rect2 = make_entity(rectangle_mesh(3, 1, 1));
     rect2.color = {0.1, 0.2, 0.7};
-    rect2.transform = translate(eye(), {-3, 0, 0});
+    rect2.transform = translate(eye(), {-3, 0, -3});
     world.entities.push_back(rect2);
-
 
     //    world.floor = make_floor();
     world.axes = make_axes();
