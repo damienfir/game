@@ -376,8 +376,14 @@ void init() {
 
     Entity rect1 = make_entity(rectangle_mesh(2, 1, 2));
     rect1.color = {0.1, 0.7, 0.2};
-    rect1.transform = translate(eye(), {0, 1, 0});
+    rect1.transform = translate(eye(), {3, 0, 0});
     world.entities.push_back(rect1);
+
+    Entity rect2 = make_entity(rectangle_mesh(3, 1, 1));
+    rect2.color = {0.1, 0.2, 0.7};
+    rect2.transform = translate(eye(), {-3, 0, 0});
+    world.entities.push_back(rect2);
+
 
     //    world.floor = make_floor();
     world.axes = make_axes();
