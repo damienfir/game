@@ -9,3 +9,4 @@ struct Mesh {
 
 Mesh floor_mesh(int rows, int cols);
 Mesh rectangle_mesh(float width, float height, float depth);
+Mesh floor_tile_mesh(float width, float depth);

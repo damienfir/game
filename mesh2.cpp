@@ -27,10 +27,10 @@ Mesh floor_mesh(int rows, int cols) {
         for (int j = 0; j < cols - 1; ++j) {
             float ii = i;
             float jj = j;
-            Vec3 v0 = {ii, 0, -jj};
-            Vec3 v1 = {ii + 1, 0, -jj};
-            Vec3 v2 = {ii + 1, 0, -(jj + 1)};
-            Vec3 v3 = {ii, 0, -(jj + 1)};
+            Vec3 v0 = {ii, 0.f, -jj};
+            Vec3 v1 = {ii + 1, 0.f, -jj};
+            Vec3 v2 = {ii + 1, 0.f, -(jj + 1)};
+            Vec3 v3 = {ii, 0.f, -(jj + 1)};
             mesh.vertices.push_back(v0 + translation);
             mesh.vertices.push_back(v1 + translation);
             mesh.vertices.push_back(v3 + translation);
@@ -42,6 +42,18 @@ Mesh floor_mesh(int rows, int cols) {
 
     mesh.normals = compute_normals(mesh.vertices);
 
+    return mesh;
+}
+
+Mesh floor_tile_mesh(float width, float depth) {
+    Mesh mesh;
+    float dx = width/2.f;
+    float dz = depth/2.f;
+    mesh.vertices = {
+        {-dx, -0.f, -dz}, {dx, -0.f, -dz}, {-dx, -0.f, dz},
+        {-dx, -0.f, dz}, {dx, -0.f, -dz}, {dx, -0.f, dz}
+    };
+    mesh.normals = compute_normals(mesh.vertices);
     return mesh;
 }
 
@@ -67,7 +79,7 @@ Mesh rectangle_mesh(float width, float height, float depth) {
 
     for (auto &vertex : mesh.vertices) {
         vertex.x *= width;
-        vertex.y *= height;
+        vertex.y = (vertex.y + 0.5f) * height;
         vertex.z *= depth;
     }
     return mesh;

@@ -5,8 +5,8 @@
 //#include "world.h"
 
 Camera::Camera()
-    : m_position({3.1, 2, 5.2}), m_direction(normalize({-0.5, -0.2, -1})), m_up({0, 1, 0}),
-      m_movement_speed(1), m_faster_factor(2), m_sensitivity(0.2) {
+    : m_position({0.5f, 1.f, -0.5f}), m_direction(normalize({0.2f, -0.1f, -0.5f})), m_up({0, 1, 0}),
+      m_movement_speed(5), m_faster_factor(2), m_sensitivity(0.2) {
     m_projection = perspective(0.1, 100.0, 0.05, 0.05 * 0.5625); // Use window size ratio
 
     update_view_matrix();
@@ -24,7 +24,7 @@ Vec3 Camera::move_horizontal() const {
 Vec3 Camera::move_vertical() const { return m_up * m_movement_speed; }
 
 Vec3 Camera::move_towards_restricted() const {
-    Vec3 horizontal_dir = {m_direction.x, 0, m_direction.z};
+    Vec3 horizontal_dir = {m_direction.x, 0.f, m_direction.z};
     return normalize(horizontal_dir) * m_movement_speed;
 }
 

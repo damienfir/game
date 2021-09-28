@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <cmath>
 #include <optional>
+#include <unordered_map>
 #include <utility>
 
 #include "axes.h"
@@ -19,7 +20,7 @@ float window_ratio = 16.f / 9.f;
 
 struct DebugControls {
     bool wireframe = false;
-    bool draw_axes = false;
+    bool draw_axes = true;
     bool show_normals = false;
 };
 
@@ -37,20 +38,33 @@ struct Entity {
 };
 
 struct Editor {
-    bool enabled = true;
+    bool enabled = false;
     float mouse_pos_x;
     float mouse_pos_y;
     int selected = -1;
     Vec3 selected_point;
 };
 
+struct Cell {
+    enum Type { Empty, Cube };
+    Type type = Empty;
+};
+
+struct Grid {
+    std::vector<Cell> cells;
+    int rows;
+    int cols;
+};
+
 struct World {
     std::vector<Entity> entities;
+    std::unordered_map<Cell::Type, Entity> types;
     Teleportation teleportation;
     Camera camera;
     Axes axes;
     DebugControls debug_controls;
     Editor editor;
+    Grid grid;
 };
 
 World world;
@@ -167,15 +181,6 @@ void draw_teleportation() {
     }
 }
 
-// void draw_floor() {
-//     RenderingParameters param = {.color = world.floor.color,
-//                                  .model_transform = world.floor.transform,
-//                                  .view_transform = world.camera.view(),
-//                                  .perspective_transform = world.camera.projection(),
-//                                  .camera_position = world.camera.position()};
-//     draw(world.floor.rendering, param);
-// }
-
 void draw_entities() {
     for (Entity &entity : world.entities) {
         RenderingParameters param = {.color = entity.color,
@@ -264,6 +269,25 @@ void update_camera_position(Camera &camera, float dt) {
     camera.set_position(camera.position() + velocity);
 }
 
+std::pair<float, float> screen_to_clip(float x, float y) {
+    float xd = (x / window_width - 0.5f) * 2;
+    float yd = 1 - (y / window_height - 0.5f) * 2;
+    return {xd, yd};
+}
+
+Ray ray_from_camera() {
+    auto [xd, yd] = screen_to_clip(world.editor.mouse_pos_x, world.editor.mouse_pos_y);
+
+    // https://antongerdelan.net/opengl/raycasting.html
+    Vec4 ray_clip = {xd, yd, -1.f, 1.f};
+    Vec4 ray_eye = invert(world.camera.projection()) * ray_clip;
+    Vec4 ray_world = invert(world.camera.view()) * Vec4{ray_eye.x, ray_eye.y, -1.f, 0.f};
+    Vec3 ray_dir = normalize({ray_world.x, ray_world.y, ray_world.z});
+
+    Ray ray = {.origin = world.camera.position(), .direction = ray_dir};
+    return ray;
+}
+
 void toggle_editor() {
     if (world.editor.enabled) {
         world.debug_controls.draw_axes = false;
@@ -274,33 +298,11 @@ void toggle_editor() {
     }
 }
 
-std::pair<float, float> screen_to_clip(float x, float y) {
-    float xd = (x / window_width - 0.5f) * 2;
-    float yd = 1 - (y / window_height - 0.5f) * 2;
-    return {xd, yd};
-}
-
-Ray ray_from_camera(float x, float y) {
-    // https://antongerdelan.net/opengl/raycasting.html
-    Vec4 ray_clip = {x, y, -1.f, 1.f};
-    Vec4 ray_eye = invert(world.camera.projection()) * ray_clip;
-    Vec4 ray_world = invert(world.camera.view()) * Vec4{ray_eye.x, ray_eye.y, -1.f, 0.f};
-    Vec3 ray_dir = normalize({ray_world.x, ray_world.y, ray_world.z});
-
-    Ray ray = {.origin = world.camera.position(), .direction = ray_dir};
-    return ray;
-}
-
-Ray ray_from_mouse() {
-    auto [xd, yd] = screen_to_clip(world.editor.mouse_pos_x, world.editor.mouse_pos_y);
-    return ray_from_camera(xd, yd);
-}
-
 void editor_update_selected() {
     int selected = world.editor.selected;
     if (selected >= 0) {
         Entity entity = world.entities[selected];
-        auto intersection = find_point_on_object(ray_from_mouse(), {selected});
+        auto intersection = find_point_on_object(ray_from_camera(), {selected});
         if (intersection) {
             Vec3 target = intersection->point;
             world.entities[selected].transform = translate(eye(), target);
@@ -309,7 +311,7 @@ void editor_update_selected() {
 }
 
 void editor_initiate_move() {
-    auto intersection = find_point_on_object(ray_from_mouse());
+    auto intersection = find_point_on_object(ray_from_camera());
     if (intersection) {
         world.editor.selected = intersection->entity_index;
         world.editor.selected_point = intersection->point;
@@ -326,6 +328,39 @@ void update_fpv_view(Camera &camera) {
     camera.controls.dy = 0;
 }
 
+void draw_entity(const Entity &entity) {
+    RenderingParameters param = {.color = entity.color,
+                                 .model_transform = entity.transform,
+                                 .view_transform = world.camera.view(),
+                                 .perspective_transform = world.camera.projection(),
+                                 .camera_position = world.camera.position(),
+                                 .show_normals = world.debug_controls.show_normals,
+                                 .teleportation_target = world.teleportation.target,
+                                 .show_teleportation = world.teleportation.visualize};
+    //        if (world.editor.enabled) {
+    //            param.teleportation_target = world.editor.selected_point;
+    //            param.show_teleportation = true;
+    //        }
+    draw(entity.rendering, param);
+}
+
+Vec3 at(const Grid &grid, int indice) {
+    float row = std::floor(indice / grid.cols);
+    float col = indice % grid.cols;
+    //    Vec3 e0 = {1, 0, 0};
+    //    Vec3 e1 = {0, 0, -1};
+    Vec3 cell_origin = {0.5f, 0.f, -0.5f};
+    return Vec3{col, 0.f, -row} + cell_origin;
+}
+
+void draw_grid() {
+    for (int i = 0; i < world.grid.cells.size(); ++i) {
+        Entity entity = world.types.at(world.grid.cells[i].type);
+        entity.transform = translate(eye(), at(world.grid, i));
+        draw_entity(entity);
+    }
+}
+
 void display() {
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -335,6 +370,8 @@ void display() {
     }
 
     draw_entities();
+
+    draw_grid();
 
     if (world.editor.enabled) {
         glPointSize(5);
@@ -347,7 +384,7 @@ void display() {
         draw_teleportation();
     }
 
-    //    draw_middle_point();
+    draw_middle_point();
 }
 
 void update(float dt) {
@@ -359,39 +396,15 @@ void update(float dt) {
 }
 
 void init() {
-    //    buffers = {make_surface(10, 10)};
-    //
-    //    for (int i = 0; i < 100; ++i) {
-    //        float size = 5 * (rand() % 90) / 90.f;
-    //        Rectangle cube = make_cube(size);
-    //        float tx = (rand() % 300 - 150) / 10.f;
-    //        float ty = (rand() % 300 - 150) / 10.f;
-    //        float tz = -(rand() % 300) / 10.f;
-    //        cube.obj.transform = translate(cube.obj.transform, {tx, ty, tz});
-    //        float r = (rand() % 900 + 100) / 1000.f;
-    //        float g = (rand() % 900 + 100) / 1000.f;
-    //        float b = (rand() % 900 + 100) / 1000.f;
-    //        cube.obj.color = {r, g, b};
-    //
-    //        world.rectangles.push_back(cube);
-    //    }
+    world.types[Cell::Type::Cube] = make_entity(rectangle_mesh(1, 1, 1));
+    Entity floor = make_entity(floor_tile_mesh(1, 1));
+    floor.color = {0.1, 0.8, 0.1};
+    world.types[Cell::Type::Empty] = floor;
 
-    //    auto cube = make_cube(5);
-    //    world.rectangles.push_back({cube});
+    std::vector<Cell> cells(100);
+    cells[21] = {.type = Cell::Cube};
+    world.grid = {.cells = cells, .rows = 10, .cols = 10};
 
-    world.entities.push_back(make_floor());
-
-    Entity rect1 = make_entity(rectangle_mesh(2, 1, 2));
-    rect1.color = {0.1, 0.7, 0.2};
-    rect1.transform = translate(eye(), {1, 0, -2});
-    world.entities.push_back(rect1);
-
-    Entity rect2 = make_entity(rectangle_mesh(3, 1, 1));
-    rect2.color = {0.1, 0.2, 0.7};
-    rect2.transform = translate(eye(), {-3, 0, -3});
-    world.entities.push_back(rect2);
-
-    //    world.floor = make_floor();
     world.axes = make_axes();
 
     glEnable(GL_DEPTH_TEST);
@@ -553,13 +566,13 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
             }
         }
     } else {
-        if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            if (action == GLFW_PRESS) {
-                initiate_teleportation();
-            } else if (action == GLFW_RELEASE) {
-                confirm_teleportation();
-            }
-        }
+//        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+//            if (action == GLFW_PRESS) {
+//                initiate_teleportation();
+//            } else if (action == GLFW_RELEASE) {
+//                confirm_teleportation();
+//            }
+//        }
     }
 }
 
