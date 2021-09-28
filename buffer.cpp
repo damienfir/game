@@ -33,8 +33,8 @@ void draw(const BasicRenderingBuffer &buffer, const RenderingParameters &param) 
     set_vec3(buffer.shader, "color", param.color);
     set_vec3(buffer.shader, "viewer_pos", param.camera_position);
     set_int(buffer.shader, "show_normals", param.show_normals);
-    set_vec3(buffer.shader, "teleportation_target", param.teleportation_target);
-    set_int(buffer.shader, "show_teleportation", param.show_teleportation);
+//    set_vec3(buffer.shader, "teleportation_target", param.teleportation_target);
+//    set_int(buffer.shader, "show_teleportation", param.show_teleportation);
 
     glDrawArrays(GL_TRIANGLES, 0, buffer.n_vertices);
     glBindVertexArray(0);

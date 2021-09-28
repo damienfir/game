@@ -13,7 +13,7 @@ Camera::Camera()
 }
 
 void Camera::set_position(Vec3 position) {
-    m_position = position;
+    m_position = position + Vec3{0.f, 1.f, 0.f};
     update_view_matrix();
 }
 

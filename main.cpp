@@ -14,7 +14,7 @@
 #include "physics.h"
 #include "timer.h"
 
-int window_width = 1920;
+int window_width = 1024;
 int window_height;
 float window_ratio = 16.f / 9.f;
 
@@ -25,8 +25,7 @@ struct DebugControls {
 };
 
 struct Teleportation {
-    bool visualize;
-    Vec3 target;
+    std::optional<Vec3> target;
 };
 
 struct Entity {
@@ -89,8 +88,6 @@ Entity make_entity(Mesh mesh) {
     return body;
 }
 
-void initiate_teleportation() { world.teleportation.visualize = true; }
-
 struct Ray {
     Vec3 origin;
     Vec3 direction;
@@ -106,16 +103,13 @@ template <typename T> bool contains(const std::vector<T> &v, const T &val) {
 }
 
 std::optional<IntersectInfo> find_point_on_object(const Ray &ray,
-                                                  const std::vector<int> &exclude = {}) {
+                                                  const std::vector<Entity> &entities) {
     IntersectInfo info;
     float min_t = std::numeric_limits<float>::max();
-    for (int i = 0; i < world.entities.size(); ++i) {
-        if (contains(exclude, i))
-            continue;
-
-        Mat4 model_transform = world.entities[i].transform;
+    for (int i = 0; i < entities.size(); ++i) {
+        Mat4 model_transform = entities[i].transform;
         Mat4 normal_transform = transpose(invert(model_transform));
-        Mesh mesh = world.entities[i].mesh;
+        Mesh mesh = entities[i].mesh;
         int n_faces = mesh.vertices.size() / 3;
         for (int face_index = 0; face_index < n_faces; ++face_index) {
             // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
@@ -157,47 +151,27 @@ std::optional<IntersectInfo> find_point_on_object(const Ray &ray,
     return info;
 }
 
-void update_teleportation() {
-    if (world.teleportation.visualize) {
-        //        world.teleportation.target = world.camera.position() + world.camera.direction() *
-        //        10;
-        Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
-        if (auto intersection = find_point_on_object(ray)) {
-            world.teleportation.target = intersection->point;
-        } else {
-            world.teleportation.target = {0, 0, 0};
-        }
-    }
-}
+// void confirm_teleportation() {
+//     world.camera.set_position(world.teleportation.target + Vec3{0, 1, 0});
+// }
 
-void confirm_teleportation() {
-    world.teleportation.visualize = false;
-    world.camera.set_position(world.teleportation.target + Vec3{0, 1, 0});
-}
-
-void draw_teleportation() {
-    if (world.teleportation.visualize) {
-        //        log(string(world.teleportation.target));
-    }
-}
-
-void draw_entities() {
-    for (Entity &entity : world.entities) {
-        RenderingParameters param = {.color = entity.color,
-                                     .model_transform = entity.transform,
-                                     .view_transform = world.camera.view(),
-                                     .perspective_transform = world.camera.projection(),
-                                     .camera_position = world.camera.position(),
-                                     .show_normals = world.debug_controls.show_normals,
-                                     .teleportation_target = world.teleportation.target,
-                                     .show_teleportation = world.teleportation.visualize};
-        //        if (world.editor.enabled) {
-        //            param.teleportation_target = world.editor.selected_point;
-        //            param.show_teleportation = true;
-        //        }
-        draw(entity.rendering, param);
-    }
-}
+// void draw_entities() {
+//     for (Entity &entity : world.entities) {
+//         RenderingParameters param = {.color = entity.color,
+//                                      .model_transform = entity.transform,
+//                                      .view_transform = world.camera.view(),
+//                                      .perspective_transform = world.camera.projection(),
+//                                      .camera_position = world.camera.position(),
+//                                      .show_normals = world.debug_controls.show_normals,
+//                                      .teleportation_target = world.teleportation.target,
+//                                      .show_teleportation = world.teleportation.visualize};
+//         //        if (world.editor.enabled) {
+//         //            param.teleportation_target = world.editor.selected_point;
+//         //            param.show_teleportation = true;
+//         //        }
+//         draw(entity.rendering, param);
+//     }
+// }
 
 void draw_middle_point() {
     glPointSize(5);
@@ -298,27 +272,27 @@ void toggle_editor() {
     }
 }
 
-void editor_update_selected() {
-    int selected = world.editor.selected;
-    if (selected >= 0) {
-        Entity entity = world.entities[selected];
-        auto intersection = find_point_on_object(ray_from_camera(), {selected});
-        if (intersection) {
-            Vec3 target = intersection->point;
-            world.entities[selected].transform = translate(eye(), target);
-        }
-    }
-}
-
-void editor_initiate_move() {
-    auto intersection = find_point_on_object(ray_from_camera());
-    if (intersection) {
-        world.editor.selected = intersection->entity_index;
-        world.editor.selected_point = intersection->point;
-    } else {
-        world.editor.selected = -1;
-    }
-}
+// void editor_update_selected() {
+//     int selected = world.editor.selected;
+//     if (selected >= 0) {
+//         Entity entity = world.entities[selected];
+//         auto intersection = find_point_on_object(ray_from_camera(), {selected});
+//         if (intersection) {
+//             Vec3 target = intersection->point;
+//             world.entities[selected].transform = translate(eye(), target);
+//         }
+//     }
+// }
+//
+// void editor_initiate_move() {
+//     auto intersection = find_point_on_object(ray_from_camera());
+//     if (intersection) {
+//         world.editor.selected = intersection->entity_index;
+//         world.editor.selected_point = intersection->point;
+//     } else {
+//         world.editor.selected = -1;
+//     }
+// }
 
 void editor_confirm_move() { world.editor.selected = -1; }
 
@@ -328,36 +302,62 @@ void update_fpv_view(Camera &camera) {
     camera.controls.dy = 0;
 }
 
-void draw_entity(const Entity &entity) {
-    RenderingParameters param = {.color = entity.color,
-                                 .model_transform = entity.transform,
-                                 .view_transform = world.camera.view(),
-                                 .perspective_transform = world.camera.projection(),
-                                 .camera_position = world.camera.position(),
-                                 .show_normals = world.debug_controls.show_normals,
-                                 .teleportation_target = world.teleportation.target,
-                                 .show_teleportation = world.teleportation.visualize};
-    //        if (world.editor.enabled) {
-    //            param.teleportation_target = world.editor.selected_point;
-    //            param.show_teleportation = true;
-    //        }
-    draw(entity.rendering, param);
+std::optional<Vec3> find_point_on_plane(Ray ray) {
+    Vec3 normal = {0, 1, 0};
+    if (dot(ray.direction, normal) >= 0) {
+        return std::nullopt;
+    }
+
+    float plane_distance = 0;
+    float t = -(dot(normal, ray.origin) - plane_distance) / dot(normal, ray.direction);
+    return ray.origin + ray.direction * t;
 }
 
-Vec3 at(const Grid &grid, int indice) {
-    float row = std::floor(indice / grid.cols);
-    float col = indice % grid.cols;
-    //    Vec3 e0 = {1, 0, 0};
-    //    Vec3 e1 = {0, 0, -1};
+Vec3 coord_at(const Grid &grid, int index) {
+    float row = std::floor(index / grid.cols);
+    float col = index % grid.cols;
     Vec3 cell_origin = {0.5f, 0.f, -0.5f};
     return Vec3{col, 0.f, -row} + cell_origin;
+}
+
+int index_at(const Grid &grid, Vec3 coord) {
+    int col = std::floor(coord.x);
+    int row = std::floor(-coord.z);
+    return row * grid.cols + col;
+}
+
+void update_teleportation() {
+    Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
+    world.teleportation.target = find_point_on_plane(ray);
+}
+
+void confirm_teleportation() {
+    if (world.teleportation.target) {
+        int index = index_at(world.grid, *world.teleportation.target);
+        world.camera.set_position(coord_at(world.grid, index));
+    }
+}
+
+RenderingParameters render_params(const Entity &entity) {
+    return {.color = entity.color,
+            .model_transform = entity.transform,
+            .view_transform = world.camera.view(),
+            .perspective_transform = world.camera.projection(),
+            .camera_position = world.camera.position(),
+            .show_normals = world.debug_controls.show_normals};
 }
 
 void draw_grid() {
     for (int i = 0; i < world.grid.cells.size(); ++i) {
         Entity entity = world.types.at(world.grid.cells[i].type);
-        entity.transform = translate(eye(), at(world.grid, i));
-        draw_entity(entity);
+        RenderingParameters params = render_params(entity);
+        params.model_transform = translate(eye(), coord_at(world.grid, i));
+        if (world.teleportation.target) {
+            if (index_at(world.grid, *world.teleportation.target) == i) {
+                params.color = {1, 1, 1};
+            }
+        }
+        draw(entity.rendering, params);
     }
 }
 
@@ -369,8 +369,6 @@ void display() {
         draw(world.axes, world.camera);
     }
 
-    draw_entities();
-
     draw_grid();
 
     if (world.editor.enabled) {
@@ -381,7 +379,7 @@ void display() {
         glVertex3d(xd, yd, 0);
         glEnd();
     } else {
-        draw_teleportation();
+        //        draw_teleportation();
     }
 
     draw_middle_point();
@@ -389,7 +387,7 @@ void display() {
 
 void update(float dt) {
     if (!world.editor.enabled) {
-        update_camera_position(world.camera, dt);
+//        update_camera_position(world.camera, dt);
         update_fpv_view(world.camera);
         update_teleportation();
     }
@@ -486,7 +484,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     if (world.editor.enabled) {
         editor_key_callback(key, action);
     } else {
-        game_key_callback(key, action);
+        //        game_key_callback(key, action);
     }
 
     if (key == GLFW_KEY_BACKSLASH && action == GLFW_PRESS) {
@@ -549,7 +547,7 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
         // FIXME: add acceleration (to move pixel-by-pixel when slow)
         world.editor.mouse_pos_x = xpos;
         world.editor.mouse_pos_y = ypos;
-        editor_update_selected();
+        //        editor_update_selected();
     } else {
         world.camera.controls.dx = dx;
         world.camera.controls.dy = dy;
@@ -560,19 +558,18 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
     if (world.editor.enabled) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             if (action == GLFW_PRESS) {
-                editor_initiate_move();
+                //                editor_initiate_move();
             } else {
-                editor_confirm_move();
+                //                editor_confirm_move();
             }
         }
     } else {
-//        if (button == GLFW_MOUSE_BUTTON_LEFT) {
-//            if (action == GLFW_PRESS) {
-//                initiate_teleportation();
-//            } else if (action == GLFW_RELEASE) {
-//                confirm_teleportation();
-//            }
-//        }
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            if (action == GLFW_PRESS) {
+                confirm_teleportation();
+            } else if (action == GLFW_RELEASE) {
+            }
+        }
     }
 }
 

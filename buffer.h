@@ -20,8 +20,8 @@ struct RenderingParameters {
     Mat4 perspective_transform;
     Vec3 camera_position;
     bool show_normals;
-    Vec3 teleportation_target;
-    bool show_teleportation;
+//    Vec3 teleportation_target;
+//    bool show_teleportation;
 };
 
 // struct SolidObjectProperties {
