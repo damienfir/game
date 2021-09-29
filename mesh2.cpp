@@ -48,7 +48,7 @@ Mesh floor_mesh(int rows, int cols) {
 Mesh floor_tile_mesh(float width, float depth) {
     Mesh mesh;
     float dx = width/2.f;
-    float dz = depth/2.f;
+    float dz = -depth/2.f;
     mesh.vertices = {
         {-dx, -0.f, -dz}, {dx, -0.f, -dz}, {-dx, -0.f, dz},
         {-dx, -0.f, dz}, {dx, -0.f, -dz}, {dx, -0.f, dz}
@@ -84,3 +84,4 @@ Mesh rectangle_mesh(float width, float height, float depth) {
     }
     return mesh;
 }
+

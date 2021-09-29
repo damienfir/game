@@ -25,7 +25,7 @@ struct DebugControls {
 };
 
 struct Teleportation {
-    std::optional<Vec3> target;
+    int target;
 };
 
 struct Entity {
@@ -44,20 +44,38 @@ struct Editor {
     Vec3 selected_point;
 };
 
+struct CellProperties {
+    int axis;
+};
+
 struct Cell {
-    enum Type { Empty, Cube };
-    Type type = Empty;
+    enum Type {
+        Start,
+        End,
+        Floor,
+        Hole, // axis: X, Y or Z
+        Wall,
+        Mirror, // normal vector will define the orientation
+        Hedge,
+        Platform,
+        RaisedPlatform
+    };
+    Type type = Type::Floor;
+    CellProperties prop;
+    Entity entity;
 };
 
 struct Grid {
+    //    std::vector<Entity> entities;
     std::vector<Cell> cells;
     int rows;
     int cols;
+    int start;
+    int end;
 };
 
 struct World {
-    std::vector<Entity> entities;
-    std::unordered_map<Cell::Type, Entity> types;
+    //    std::vector<Entity> entities;
     Teleportation teleportation;
     Camera camera;
     Axes axes;
@@ -78,10 +96,10 @@ Entity make_floor() {
     return body;
 }
 
-Entity make_entity(Mesh mesh) {
+Entity make_entity(Mesh mesh, Vec3 color = {0.5, 0.5, 0.5}) {
     Entity body;
     body.mesh = mesh;
-    body.color = {0.5, 0.2, 0.5};
+    body.color = color;
     body.transform = eye();
     body.rendering = init_rendering(mesh);
     body.origin = {0, 0, 0};
@@ -102,14 +120,14 @@ template <typename T> bool contains(const std::vector<T> &v, const T &val) {
     return std::find(std::begin(v), std::end(v), val) != std::end(v);
 }
 
-std::optional<IntersectInfo> find_point_on_object(const Ray &ray,
-                                                  const std::vector<Entity> &entities) {
-    IntersectInfo info;
+std::optional<IntersectInfo> find_point_on_grid(const Ray &ray) {
+    std::optional<IntersectInfo> info;
     float min_t = std::numeric_limits<float>::max();
-    for (int i = 0; i < entities.size(); ++i) {
-        Mat4 model_transform = entities[i].transform;
+    for (int i = 0; i < world.grid.cells.size(); ++i) {
+        const Cell &cell = world.grid.cells[i];
+        Mat4 model_transform = cell.entity.transform;
         Mat4 normal_transform = transpose(invert(model_transform));
-        Mesh mesh = entities[i].mesh;
+        Mesh mesh = cell.entity.mesh;
         int n_faces = mesh.vertices.size() / 3;
         for (int face_index = 0; face_index < n_faces; ++face_index) {
             // https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
@@ -208,37 +226,39 @@ void update_camera_position(Camera &camera, float dt) {
     //    velocity.y -= 100 * dt; // Fake gravity, should accumulate
     velocity *= dt;
 
-    float radius = 0.3;
-    if (norm(velocity) > 0) {
-        for (int entity_index = 0; entity_index < world.entities.size(); ++entity_index) {
-            const Mesh &mesh = world.entities[entity_index].mesh;
-            Mat4 model_transform = world.entities[entity_index].transform;
-            Mat4 normal_transform = transpose(invert(model_transform));
-            for (int face_index = 0; face_index < mesh.vertices.size() / 3; ++face_index) {
-                Vec3 position = camera.position() + velocity;
-                Vec3 v0 = model_transform * mesh.vertices[face_index * 3];
-                Vec3 v1 = model_transform * mesh.vertices[face_index * 3 + 1];
-                Vec3 v2 = model_transform * mesh.vertices[face_index * 3 + 2];
-                Vec3 n = normal_transform * mesh.normals[face_index * 3];
-
-                Vec3 face_center = centroid(v0, v1, v2);
-                float circumsphere_radius = norm(v0 - face_center);
-                if (norm(position - face_center) < circumsphere_radius) {
-                    Vec3 p0 = position - v0;
-                    Vec3 p1 = position - v1;
-                    Vec3 p2 = position - v2;
-                    if (dot(p0, v1 - v0) > 0 && dot(p1, v2 - v1) > 0 && dot(p2, v0 - v2) > 0) {
-                        float distance = dot(p0, n);
-                        if (distance - radius < 0 &&
-                            distance > 0 // Assumption that we will never be inside an object...
-                        ) {
-                            velocity -= n * (distance - radius);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    //    float radius = 0.3;
+    //    if (norm(velocity) > 0) {
+    //        for (int entity_index = 0; entity_index < world.entities.size(); ++entity_index) {
+    //            const Mesh &mesh = world.entities[entity_index].mesh;
+    //            Mat4 model_transform = world.entities[entity_index].transform;
+    //            Mat4 normal_transform = transpose(invert(model_transform));
+    //            for (int face_index = 0; face_index < mesh.vertices.size() / 3; ++face_index) {
+    //                Vec3 position = camera.position() + velocity;
+    //                Vec3 v0 = model_transform * mesh.vertices[face_index * 3];
+    //                Vec3 v1 = model_transform * mesh.vertices[face_index * 3 + 1];
+    //                Vec3 v2 = model_transform * mesh.vertices[face_index * 3 + 2];
+    //                Vec3 n = normal_transform * mesh.normals[face_index * 3];
+    //
+    //                Vec3 face_center = centroid(v0, v1, v2);
+    //                float circumsphere_radius = norm(v0 - face_center);
+    //                if (norm(position - face_center) < circumsphere_radius) {
+    //                    Vec3 p0 = position - v0;
+    //                    Vec3 p1 = position - v1;
+    //                    Vec3 p2 = position - v2;
+    //                    if (dot(p0, v1 - v0) > 0 && dot(p1, v2 - v1) > 0 && dot(p2, v0 - v2) > 0)
+    //                    {
+    //                        float distance = dot(p0, n);
+    //                        if (distance - radius < 0 &&
+    //                            distance > 0 // Assumption that we will never be inside an
+    //                            object...
+    //                        ) {
+    //                            velocity -= n * (distance - radius);
+    //                        }
+    //                    }
+    //                }
+    //            }
+    //        }
+    //    }
 
     camera.set_position(camera.position() + velocity);
 }
@@ -320,21 +340,36 @@ Vec3 coord_at(const Grid &grid, int index) {
     return Vec3{col, 0.f, -row} + cell_origin;
 }
 
+int index_at(const Grid &grid, int row, int col) { return row * grid.cols + col; }
+
+Vec3 coord_at(const Grid &grid, int row, int col) {
+    return coord_at(grid, index_at(grid, row, col));
+}
+
 int index_at(const Grid &grid, Vec3 coord) {
     int col = std::floor(coord.x);
     int row = std::floor(-coord.z);
-    return row * grid.cols + col;
+    return index_at(grid, row, col);
+}
+
+bool can_teleport_here(Cell::Type type) {
+    return (type == Cell::Type::Floor) || (type == Cell::Type::Start) || (type == Cell::Type::End);
 }
 
 void update_teleportation() {
     Ray ray = {.origin = world.camera.position(), .direction = world.camera.direction()};
-    world.teleportation.target = find_point_on_plane(ray);
+    auto point = find_point_on_grid(ray);
+    if (point && can_teleport_here(world.grid.cells[point->entity_index].type)) {
+        world.teleportation.target = point->entity_index;
+    } else {
+        world.teleportation.target = -1;
+    }
 }
 
 void confirm_teleportation() {
-    if (world.teleportation.target) {
-        int index = index_at(world.grid, *world.teleportation.target);
-        world.camera.set_position(coord_at(world.grid, index));
+    if (world.teleportation.target >= 0) {
+        log(world.teleportation.target);
+        world.camera.set_position(coord_at(world.grid, world.teleportation.target));
     }
 }
 
@@ -349,13 +384,10 @@ RenderingParameters render_params(const Entity &entity) {
 
 void draw_grid() {
     for (int i = 0; i < world.grid.cells.size(); ++i) {
-        Entity entity = world.types.at(world.grid.cells[i].type);
+        const Entity &entity = world.grid.cells[i].entity;
         RenderingParameters params = render_params(entity);
-        params.model_transform = translate(eye(), coord_at(world.grid, i));
-        if (world.teleportation.target) {
-            if (index_at(world.grid, *world.teleportation.target) == i) {
-                params.color = {1, 1, 1};
-            }
+        if (world.teleportation.target == i) {
+            params.color = {1, 1, 1};
         }
         draw(entity.rendering, params);
     }
@@ -387,22 +419,105 @@ void display() {
 
 void update(float dt) {
     if (!world.editor.enabled) {
-//        update_camera_position(world.camera, dt);
+        //        update_camera_position(world.camera, dt);
         update_fpv_view(world.camera);
         update_teleportation();
     }
 }
 
+Entity make_entity_from_cell(Cell::Type type, CellProperties prop) {
+    switch (type) {
+    case Cell::Type::Floor:
+    case Cell::Type::Start:
+        return make_entity(floor_tile_mesh(1, 1), {0.1, 0.8, 0.1});
+    case Cell::Type::End:
+        return make_entity(floor_tile_mesh(1, 1), {0.1, 0.4, 0.5});
+    case Cell::Type::Wall: {
+        if (prop.axis == 0) {
+            return make_entity(rectangle_mesh(1, 5, 0.2));
+        } else {
+            return make_entity(rectangle_mesh(0.2, 5, 1));
+        }
+    }
+    case Cell::Type::Hedge: {
+        if (prop.axis == 0) {
+            return make_entity(rectangle_mesh(1, 0.5, 0.2), {0.1, 0.5, 0.1});
+        } else if (prop.axis == 2) {
+            return make_entity(rectangle_mesh(0.2, 0.5, 1), {0.1, 0.5, 0.1});
+        }
+    }
+    case Cell::Type::Platform: {
+        return make_entity(rectangle_mesh(1, 0.5, 1), {0.1, 0.1, 0.8});
+    }
+    case Cell::Type::RaisedPlatform: {
+        return make_entity(rectangle_mesh(1, 2, 1), {0.1, 0.1, 0.8});
+    }
+    }
+}
+
+void add_cell(Grid &grid, int row, int col, Cell::Type type, CellProperties prop = {}) {
+    Entity entity = make_entity_from_cell(type, prop);
+    entity.transform = translate(eye(), coord_at(grid, row, col));
+    Cell cell = {
+        .type = type,
+        .prop = prop,
+        .entity = entity,
+    };
+    grid.cells[index_at(grid, row, col)] = cell;
+}
+
+Grid make_grid_from_definition(std::string def, int rows, int cols) {
+    Grid grid;
+    grid.rows = rows;
+    grid.cols = cols;
+    grid.cells.resize(rows * cols);
+
+    for (int row = 0; row < rows; ++row) {
+        for (int col = 0; col < cols; ++col) {
+            int index = row * cols + col;
+            std::string s = def.substr(index * 2, 2);
+
+            if (s == "  ") {
+                add_cell(grid, row, col, Cell::Type::Floor);
+            } else if (s == "==") {
+                add_cell(grid, row, col, Cell::Type::Wall, {.axis = 0});
+            } else if (s == "||") {
+                add_cell(grid, row, col, Cell::Type::Wall, {.axis = 2});
+            } else if (s == "--") {
+                add_cell(grid, row, col, Cell::Type::Hedge, {.axis = 0});
+            } else if (s == "| ") {
+                add_cell(grid, row, col, Cell::Type::Hedge, {.axis = 2});
+            } else if (s == "TT") {
+                add_cell(grid, row, col, Cell::Type::RaisedPlatform);
+            } else if (s == "__") {
+                add_cell(grid, row, col, Cell::Type::Platform);
+            } else if (s == "a ") {
+                add_cell(grid, row, col, Cell::Type::Start);
+                grid.start = index;
+            } else if (s == "z ") {
+                add_cell(grid, row, col, Cell::Type::End);
+                grid.end = index;
+            } else {
+                throw std::runtime_error("Unknown cell: '" + s + "' at location (" +
+                                         std::to_string(row) + ", " + std::to_string(col) + ")");
+            }
+        }
+    }
+    return grid;
+}
+
+Grid make_grid1() {
+    std::string def = "||============||"
+                      "||a   ||      ||"
+                      "||    ||      z "
+                      "||    |       ||"
+                      "||============||";
+    return make_grid_from_definition(def, 5, 8);
+}
+
 void init() {
-    world.types[Cell::Type::Cube] = make_entity(rectangle_mesh(1, 1, 1));
-    Entity floor = make_entity(floor_tile_mesh(1, 1));
-    floor.color = {0.1, 0.8, 0.1};
-    world.types[Cell::Type::Empty] = floor;
-
-    std::vector<Cell> cells(100);
-    cells[21] = {.type = Cell::Cube};
-    world.grid = {.cells = cells, .rows = 10, .cols = 10};
-
+    world.grid = make_grid1();
+    world.camera.set_position(coord_at(world.grid, world.grid.start));
     world.axes = make_axes();
 
     glEnable(GL_DEPTH_TEST);
